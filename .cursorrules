@@ -1,0 +1,13 @@
+# Cursor Rules
+
+# Rule to prevent using cd to run npm commands
+rule "Don't use cd to run npm commands" {
+  match {
+    command = /^cd .+ && npm/
+  }
+  
+  suggest {
+    message = "You don't need to cd to run npm commands. Run them directly with 'npm <command>' instead."
+    replacement = command.replace(/^cd .+ && (npm.*)/, "$1")
+  }
+} 
