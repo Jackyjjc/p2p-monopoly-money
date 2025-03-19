@@ -13,8 +13,8 @@
 import Peer, { DataConnection } from 'peerjs';
 import { Message } from '../types';
 import { EventEmitter } from 'events';
-import { MessageService } from './MessageService';
 import { DataMessage } from '../types';
+import { validateMessage } from '../utils';
 
 export class PeerService extends EventEmitter {
   private initialized: boolean = false;
@@ -222,13 +222,21 @@ export class PeerService extends EventEmitter {
   }
 
   /**
+   * Get all connected peers
+   * @returns Array of peer IDs
+   */
+  public getPeers(): string[] {
+    return Array.from(this.connectedPeers.keys());
+  }
+
+  /**
    * Handle an incoming message
    * @param senderId The peer ID that sent the message
    * @param message The message
    */
   private handleMessage(senderId: string, message: Message): void {
     // Validate the message
-    if (!MessageService.validateMessage(message)) {
+    if (!validateMessage(message)) {
       console.error('Invalid message received:', message);
       return;
     }

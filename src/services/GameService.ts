@@ -13,7 +13,7 @@ import {
   DataMessage
 } from '../types';
 import { PeerService } from './PeerService';
-import { MessageService } from './MessageService';
+import { createDataMessage } from '../utils';
 
 // Game events
 export enum GameEvent {
@@ -193,18 +193,17 @@ export class GameService extends EventEmitter {
       throw new Error('Only admin can broadcast game state');
     }
 
-    const peerId = this.peerService.getPeerId();
-    if (!peerId) {
-      console.error('Peer ID not available. Cannot broadcast game state.');
+    if (this.peerService.getPeers().length === 0) {
       return;
     }
+
+    const connectedPeers = this.peerService.getPeers();
     
-    try {
-      const dataMessage = MessageService.createDataMessage(peerId, this.gameState);
+    // Broadcast game state to all connected peers
+    connectedPeers.forEach((peerId: string) => {
+      const dataMessage = createDataMessage(peerId, this.gameState);
       this.peerService.broadcast(dataMessage);
-    } catch (error) {
-      console.error('Error broadcasting game state:', error);
-    }
+    });
   }
 
   /**

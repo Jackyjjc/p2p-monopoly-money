@@ -118,9 +118,9 @@ interface GameState {
 - Provides methods for direct peer-to-peer communication.
 - This service does not know what messages are sent; it is only responsible for sending and receiving messages.
 
-#### MessageService
+#### Message Utilities
 
-**Responsibility**: Provides helper methods for creating messages to send to other peers. It also provides basic validation of the messages to ensure they are not malformed. Message serialization and deserialization are handled by PeerJS, not this class.
+**Responsibility**: Utility functions for creating messages to send to other peers. They also provide basic validation of the messages to ensure they are not malformed. Message serialization and deserialization are handled by PeerJS, not these utility functions.
 
 **Key Functions**:
 - Provides helper methods for creating messages to send to other peers.
