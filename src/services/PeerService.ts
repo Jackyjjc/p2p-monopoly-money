@@ -11,9 +11,8 @@
  * - 'message': Emitted when a message is received from a peer. Payload: { peerId: string, message: Message }.
  */
 import Peer, { DataConnection } from 'peerjs';
-import { Message } from '../types';
 import { EventEmitter } from 'events';
-import { DataMessage } from '../types';
+import { PeerServiceMessage } from '../types/peerMessages';
 import { validateMessage } from '../utils';
 
 export class PeerService extends EventEmitter {
@@ -36,12 +35,15 @@ export class PeerService extends EventEmitter {
    * @param isLeader Whether this peer should be the leader of the star network
    * @returns Promise that resolves when the peer is connected to the signal server and has a peer ID.
    */
-  public async initialize(isLeader: boolean = false): Promise<void> {
+  public async initConnection(isLeader: boolean = false): Promise<string> {
     console.log('PeerService initialize is called');
 
     if (this.initialized) {
       console.log('PeerService is already initialized or being initialized');
-      return;
+      if (this.peer?.id) {
+        return this.peer.id;
+      }
+      throw new Error('Peer is initialized but has no ID');
     } 
 
     this.initialized = true;
@@ -61,7 +63,7 @@ export class PeerService extends EventEmitter {
     this.setupEventListeners();
     
     // Promise to wait for the peer to be fully connected to the signal server. We only get a peer ID after the connection is open.
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<string>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Connection to signal server timed out'));
       }, 10000);
@@ -73,7 +75,7 @@ export class PeerService extends EventEmitter {
           this.setLeader(id);
         }
         console.log('Connected to signal server with peer ID:', id);
-        resolve();
+        resolve(id);
       });
 
       // Handle connection error
@@ -117,7 +119,7 @@ export class PeerService extends EventEmitter {
 
       // Handle incoming data
       connection.on('data', (data) => {
-        this.handleMessage(remotePeerId, data as Message);
+        this.handleMessage(remotePeerId, data as PeerServiceMessage);
       });
     });
 
@@ -193,7 +195,7 @@ export class PeerService extends EventEmitter {
 
 
         connection.on('data', (data) => {
-          this.handleMessage(remotePeerId, data as Message);
+          this.handleMessage(remotePeerId, data as PeerServiceMessage);
         });
 
         this.emit('peer:connect', remotePeerId);
@@ -234,7 +236,7 @@ export class PeerService extends EventEmitter {
    * @param senderId The peer ID that sent the message
    * @param message The message
    */
-  private handleMessage(senderId: string, message: Message): void {
+  private handleMessage(senderId: string, message: PeerServiceMessage): void {
     // Validate the message
     if (!validateMessage(message)) {
       console.error('Invalid message received:', message);
@@ -242,14 +244,14 @@ export class PeerService extends EventEmitter {
     }
     
     // Forward all data messages to listeners
-    this.emit('message', { peerId: senderId, message: message as DataMessage });
+    this.emit('message', { peerId: senderId, message });
   }
 
   /**
    * Send a message to all connected peers
    * @param message The message to send
    */
-  public async broadcast(message: Message): Promise<void> {
+  public async broadcast(message: PeerServiceMessage): Promise<void> {
     if (this.peer == null || !this.initialized) {
       throw new Error('PeerService is not initialized');
     }
@@ -271,7 +273,7 @@ export class PeerService extends EventEmitter {
    * @param peerId The peer ID to send to
    * @param message The message to send
    */
-  public async sendToPeer(peerId: string, message: Message): Promise<void> {
+  public async sendToPeer(peerId: string, message: PeerServiceMessage): Promise<void> {
     if (this.peer == null || !this.initialized) {
       throw new Error('PeerService is not initialized');
     }

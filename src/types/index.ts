@@ -6,4 +6,4 @@
 export * from './models';
 
 // Export all message interfaces
-export * from './messages';
+export * from './peerMessages';

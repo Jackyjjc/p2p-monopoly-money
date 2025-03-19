@@ -9,7 +9,7 @@ jest.mock('peerjs', () => ({
   })
 }));
 
-import { MessageType, DataMessage } from '../../types';
+import { PeerMessageType, PeerServiceMessage } from '../../types/peerMessages';
 import { PeerService } from '../PeerService';
 
 
@@ -33,19 +33,19 @@ describe('PeerService', () => {
   });
 
   it('should initialize successfully', async () => {
-    await peer1.initialize(true); // Initialize as leader
+    await peer1.initConnection(true); // Initialize as leader
     const peerId = peer1.getPeerId();
     expect(peerId).toBeTruthy();
   });
 
   it('should allow peer2 to connect to peer1', async () => {
     // Initialize peer1 as leader
-    await peer1.initialize(true);
+    await peer1.initConnection(true);
     const peer1Id = peer1.getPeerId();
     expect(peer1Id).toBeTruthy();
 
     // Initialize peer2
-    await peer2.initialize(false);
+    await peer2.initConnection(false);
     const peer2Id = peer2.getPeerId();
     expect(peer2Id).toBeTruthy();
 
@@ -68,11 +68,11 @@ describe('PeerService', () => {
     peer2.on('message', peer2MessageSpy);
 
     // Initialize and connect peers
-    await peer1.initialize(true);
+    await peer1.initConnection(true);
     const peer1Id = peer1.getPeerId();
     console.log("peer1Id", peer1Id);
 
-    await peer2.initialize(false);
+    await peer2.initConnection(false);
     const peer2Id = peer2.getPeerId();
     console.log("peer2Id", peer2Id);
     await peer2.connectToPeer(peer1Id!);
@@ -81,12 +81,11 @@ describe('PeerService', () => {
     await wait(500);
 
     // Create a test message
-    const testMessage: DataMessage = {
-      type: MessageType.DATA,
-      senderId: peer2Id!,
-      timestamp: Date.now(),
-      protocolVersion: '1.0.0',
-      payload: { test: 'Hello from peer2' }
+    const testMessage: PeerServiceMessage = {
+      type: PeerMessageType.STATE_SYNC,
+      payload: { 
+        gameState: { test: 'Hello from peer2' }
+      }
     };
 
     // Send message from peer2 to peer1
@@ -100,18 +99,17 @@ describe('PeerService', () => {
       expect.objectContaining({
         peerId: peer2Id,
         message: expect.objectContaining({
-          payload: { test: 'Hello from peer2' }
+          payload: { gameState: { test: 'Hello from peer2' } }
         })
       })
     );
 
     // Create a response message
-    const responseMessage: DataMessage = {
-      type: MessageType.DATA,
-      senderId: peer1Id!,
-      timestamp: Date.now(),
-      protocolVersion: '1.0.0',
-      payload: { test: 'Hello from peer1' }
+    const responseMessage: PeerServiceMessage = {
+      type: PeerMessageType.STATE_SYNC,
+      payload: { 
+        gameState: { test: 'Hello from peer1' }
+      }
     };
 
     // Send message from peer1 to peer2
@@ -126,7 +124,7 @@ describe('PeerService', () => {
       expect.objectContaining({
         peerId: peer1Id,
         message: expect.objectContaining({
-          payload: { test: 'Hello from peer1' }
+          payload: { gameState: { test: 'Hello from peer1' } }
         })
       })
     );
@@ -145,12 +143,12 @@ describe('PeerService', () => {
       peer3.on('message', peer3MessageSpy);
 
       // Initialize peer1 as leader
-      await peer1.initialize(true);
+      await peer1.initConnection(true);
       const peer1Id = peer1.getPeerId();
       
       // Initialize peer2 and peer3
-      await peer2.initialize(false);
-      await peer3.initialize(false);
+      await peer2.initConnection(false);
+      await peer3.initConnection(false);
       
       // Connect peer2 and peer3 to peer1 (the leader)
       await peer2.connectToPeer(peer1Id!);
@@ -160,12 +158,11 @@ describe('PeerService', () => {
       await wait(500);
       
       // Create a broadcast message
-      const broadcastMessage: DataMessage = {
-        type: MessageType.DATA,
-        senderId: peer1Id!,
-        timestamp: Date.now(),
-        protocolVersion: '1.0.0',
-        payload: { test: 'Broadcast from leader' }
+      const broadcastMessage: PeerServiceMessage = {
+        type: PeerMessageType.STATE_SYNC,
+        payload: { 
+          gameState: { test: 'Broadcast from leader' }
+        }
       };
       
       // Broadcast message from peer1 (leader) to all connected peers
@@ -179,7 +176,7 @@ describe('PeerService', () => {
         expect.objectContaining({
           peerId: peer1Id,
           message: expect.objectContaining({
-            payload: { test: 'Broadcast from leader' }
+            payload: { gameState: { test: 'Broadcast from leader' } }
           })
         })
       );
@@ -188,7 +185,7 @@ describe('PeerService', () => {
         expect.objectContaining({
           peerId: peer1Id,
           message: expect.objectContaining({
-            payload: { test: 'Broadcast from leader' }
+            payload: { gameState: { test: 'Broadcast from leader' } }
           })
         })
       );
@@ -208,10 +205,10 @@ describe('PeerService', () => {
       peer2.on('peer:disconnect', peer2DisconnectSpy);
 
       // Initialize and connect peers
-      await peer1.initialize(true);
+      await peer1.initConnection(true);
       const peer1Id = peer1.getPeerId();
       
-      await peer2.initialize(false);
+      await peer2.initConnection(false);
       const peer2Id = peer2.getPeerId();
       
       await peer2.connectToPeer(peer1Id!);
