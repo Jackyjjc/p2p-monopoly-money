@@ -1,190 +1,82 @@
-# P2P Money Tracker - Implementation Todo List
+# P2P Money Implementation Checklist
 
-This document contains all implementation tasks organized by phase and iteration, with checkboxes to track progress.
+## 1. Set Up Core Project Structure & Tooling
 
-## Phase 1: Project Setup & Foundation
+### 1.1 Initialize Repository & Tools
+- [x] 1.1.1 Create a Git repo and commit an empty package.json, .gitignore
+- [x] 1.1.2 Install dependencies: react, react-dom, typescript, webpack, babel (if needed), ts-loader, etc.
+- [x] 1.1.3 Add essential scripts: "start", "build", "test"
 
-### Iteration 1.1: Initial Project Setup
-- [x] Initialize React TypeScript project with Webpack
-- [x] Set up basic project structure (components, contexts, hooks, utils, services)
-- [x] Configure TypeScript settings in tsconfig.json
-- [x] Set up ESLint with recommended React and TypeScript rules
-- [] Create placeholder pages (Home, GameLobby, GameDashboard)
-- [] Implement basic routing between pages using React Router
-- [x] Create simple App component that renders the router
-- [] Add basic global CSS file with reset styles and theme variables
+### 1.2 Directory Structure & Basic Scripts
+- [x] 1.2.1 Create /src folder and subfolders: services, types, utils, components, pages
+- [x] 1.2.2 Add a minimal src/index.tsx with a ReactDOM.render(<App />, ...)
+- [x] 1.2.3 Verify that npm run build outputs a working bundle, and npm run start launches a local dev server
 
-### Iteration 1.2: Core Data Models
-- [x] Define TypeScript interfaces for Player, Stash, Transaction, and GameState
-- [x] Create utility functions for ID generation, validation
-- [] Implement basic GameState context provider
-- [x] Create localStorage service for game persistence
-- [] Add simple unit tests for validation utilities
+## 2. Implement Peer-to-Peer Foundation (PeerService)
 
-## Phase 2: WebRTC Infrastructure
+### 2.1 Create PeerService Skeleton
+- [x] 2.1.1 Import Peer from peerjs
+- [x] 2.1.2 Implement the constructor that calls new Peer() and sets up peer.on('open'), etc.
+- [x] 2.1.3 Create an internal map to track open connections
 
-### Iteration 2.1: Peer Connection Basics
-- [x] Install PeerJS and WebRTC dependencies
-- [x] Create PeerService with basic WebRTC functionality
-- [] Create ConnectionContext for connection status and methods
-- [x] Implement message serialization/deserialization utilities
-- [x] Add basic error handling for connection failures
+### 2.2 Connection & Messaging Methods
+- [x] 2.2.1 Implement connectToPeer(remotePeerId) that returns a Promise resolved on "open"
+- [x] 2.2.2 Add broadcast(message) that loops over all connected peers and sends the message
+- [x] 2.2.3 Emit an 'message' event whenever a connected peer sends data
 
-### Iteration 2.2: Peer-to-Peer Communication
-- [x] Enhance PeerService to support direct peer-to-peer connections
-- [x] Design and implement messaging protocol between peers
-- [x] Build ConnectionManager service for tracking peers
-- [x] Implement basic peer discovery mechanism
-- [] Update UI to show connection status
+## 3. Implement Game Logic (GameService)
 
-### Iteration 2.3: Mesh Network & Reconnection
-- [x] Extend ConnectionManager to support full mesh network
-- [x] Implement peer list sharing between admin and new players
-- [x] Add reconnection logic for dropped connections
-- [x] Create mechanism for persistent peer identification
-- [ ] Add comprehensive testing for multi-peer scenarios
+### 3.1 Set Up GameService Class
+- [x] 3.1.1 Accept PeerService via constructor
+- [x] 3.1.2 In initGame, set or load a GameState. Decide if local user is admin
+- [x] 3.1.3 Listen to 'peer:connect' events so admin can add the new player to the game
 
-## Phase 3: Core Game State Management
+### 3.2 Core Methods (Add/Update Player, Stash, Transactions)
+- [x] 3.2.1 addPlayer(playerId, playerName?) → modifies local GameState if admin
+- [x] 3.2.2 updateStash(...) → modifies stashes in local GameState
+- [x] 3.2.3 processTransaction(transaction) → checks balances, if admin, updates and broadcasts. If not admin, forward to admin
+- [x] 3.2.4 syncState(incomingGameState) → merges if incomingGameState.version > currentGameState.version
 
-### Iteration 3.1: Basic State Management
-- [x] Enhance GameState context provider with comprehensive state structure
-- [x] Create state update reducers for various actions
-- [x] Implement version control for state synchronization
-- [x] Enhance localStorage persistence
-- [ ] Create test functions to verify state updates
+## 4. Build React State & Context
 
-### Iteration 3.2: State Synchronization
-- [x] Implement state broadcasting from admin to peers
-- [x] Add state update validation and version checking
-- [x] Create state recovery mechanism for new/returning players
-- [x] Build conflict resolution for concurrent updates
-- [ ] Add comprehensive tests for state synchronization
+### 4.1 GameContext & Reducer
+- [ ] 4.1.1 Create GameContext.tsx with React.createContext()
+- [ ] 4.1.2 Define the gameReducer(state, action) that handles e.g. SYNC_STATE, START_GAME
+- [ ] 4.1.3 Provide a GameProvider that wraps the app, storing [state, dispatch]
 
-### Iteration 3.3: Admin Election Process
-- [] Enhance game state to include admin identification
-- [] Create admin election algorithm based on peer IDs
-- [] Build state handover mechanism when admin changes
-- [] Add logic to trigger elections on admin disconnection
-- [ ] Create comprehensive tests for admin election scenarios
+### 4.2 Local Storage & Initialization
+- [ ] 4.2.1 On app start, check if local storage has a gameState. If so, dispatch it to the reducer
+- [ ] 4.2.2 On every reducer update, write the new state to local storage
+- [ ] 4.2.3 Confirm it doesn't conflict with the real-time sync from the admin
 
-## Phase 4: UI Components Development
+## 5. Create Core UI Pages & Components
 
-### Iteration 4.1: Home Screen & Game Creation
-- [] Design and implement home screen layout
-- [] Create game creation form with validation
-- [] Build game joining flow with peer ID input
-- [] Implement local game history display
-- [] Add responsive design for mobile compatibility
+### 5.1 HomePage
+- [ ] 5.1.1 Provide an input for the user's display name
+- [ ] 5.1.2 "Create Game" button: calls GameService.initGame(), sets local user as admin
+- [ ] 5.1.3 "Join Game" button: prompts for admin's peerId, calls PeerService.connectToPeer(...)
 
-### Iteration 4.2: Game Lobby Components
-- [] Design and implement waiting room UI
-- [] Create player list component with connection status
-- [] Build admin controls for game configuration
-- [] Implement copy-to-clipboard functionality for sharing peer ID
-- [] Add start game functionality for admin
+### 5.2 LobbyPage
+- [ ] 5.2.1 Display list of players and stashes from the GameState
+- [ ] 5.2.2 If admin, allow adding stash: input fields for name/balance, "Add" button
+- [ ] 5.2.3 Provide "Start Game" button → calls GameService.startGame()
 
-### Iteration 4.3: Game Dashboard Components
-- [] Design and implement game dashboard layout
-- [] Create player cards showing balances and status
-- [] Build stash representation and interaction components
-- [] Implement responsive layout for different screen sizes
-- [] Add visual indicators for game status changes
+### 5.3 GamePage
+- [ ] 5.3.1 Show a transaction "dashboard" of balances for all players and stashes
+- [ ] 5.3.2 "New Transaction" button → open a modal with fields for sender, receiver, amount
+- [ ] 5.3.3 On confirm, call GameService.processTransaction(transaction) or forward to admin
 
-## Phase 5: Transaction Management
+### 5.4 GameEndedPage
+- [ ] 5.4.1 Render final balances (or just show the read-only version of GameState)
+- [ ] 5.4.2 "Return to Home" → user resets or navigates to main
 
-### Iteration 5.1: Basic Transactions
-- [] Design and implement transaction form
-- [] Create transaction validation logic
-- [] Build transaction submission flow
-- [] Implement transaction broadcasting to all peers
-- [] Update UI to reflect transaction effects
+## 6. Finalize Testing & Deployment
 
-### Iteration 5.2: Transaction History
-- [] Design and implement transaction history view
-- [] Create transaction item components with details
-- [] Build filtering and sorting functionality
-- [ ] Implement pagination or infinite scroll for large history
-- [] Add transaction timestamp formatting
+### 6.1 Unit Tests
+- [ ] 6.1.1 For PeerService, mock PeerJS or use a test harness to connect two peers
+- [ ] 6.1.2 For GameService, test adding stashes, players, transactions. Confirm version updates
 
-### Iteration 5.3: Transaction Editing
-- [ ] Implement transaction editing UI
-- [ ] Create transaction modification validation
-- [ ] Build confirmation flow with affected parties
-- [ ] Implement transaction edit broadcasting
-- [ ] Update history view to show edited transactions
-
-## Phase 6: Admin Controls & Game Flow
-
-### Iteration 6.1: Game Configuration
-- [] Implement initial balance setting for players
-- [] Create stash creation and configuration UI
-- [] Build game configuration validation
-- [] Implement configuration broadcasting to peers
-- [] Add confirmation step before starting game
-
-### Iteration 6.2: Game Status Management
-- [] Implement game status transitions
-- [] Create UI indicators for current game status
-- [] Build game ending functionality
-- [] Implement final balance summary view
-- [] Add option to start new game or return home
-
-### Iteration 6.3: Enhanced Admin Features
-- [ ] Implement transaction override capabilities for admin
-- [ ] Create player removal/kick functionality
-- [ ] Build stash modification options during game
-- [ ] Implement admin transfer capability
-- [ ] Add admin-only settings and controls
-
-## Phase 7: Error Handling & Recovery
-
-### Iteration 7.1: Connection Error Handling
-- [x] Implement comprehensive connection error detection
-- [] Create user-friendly error messages for connection issues
-- [x] Build automatic reconnection with exponential backoff
-- [] Implement manual reconnection options
-- [] Add detailed connection status indicators
-
-### Iteration 7.2: Transaction Error Handling
-- [] Enhance transaction validation with detailed feedback
-- [] Create UI for displaying validation errors
-- [ ] Implement handling for concurrent transaction conflicts
-- [ ] Build recovery mechanisms for failed transactions
-- [ ] Add transaction confirmation for large amounts
-
-### Iteration 7.3: State Synchronization Error Handling
-- [x] Implement detection for state inconsistencies
-- [x] Create force resynchronization mechanism
-- [x] Build data integrity validation
-- [ ] Implement recovery for corrupted states
-- [ ] Add user options for manual synchronization
-
-## Phase 8: Polish & Finalization
-
-### Iteration 8.1: Performance Optimization
-- [ ] Audit and optimize component rendering
-- [ ] Implement lazy loading for non-critical components
-- [ ] Optimize state updates to minimize re-renders
-- [ ] Review and improve WebRTC connection efficiency
-- [ ] Test performance with maximum number of players
-
-### Iteration 8.2: Browser & Device Testing
-- [ ] Test application in all major browsers
-- [ ] Verify responsive design on various screen sizes
-- [ ] Test on mobile devices and tablets
-- [ ] Verify functionality under different network conditions
-- [ ] Fix any browser-specific issues
-
-### Iteration 8.3: Final Touches
-- [ ] Improve overall visual design and consistency
-- [ ] Add helpful tooltips and guidance for first-time users
-- [ ] Implement loading states and transitions
-- [ ] Create comprehensive error messaging system
-- [ ] Perform final end-to-end testing of all features
-
-## Final Integration
-- [ ] Review all context providers and their consumers
-- [ ] Verify all event handlers and state updates
-- [ ] Test complete user flows from start to finish
-- [ ] Check for any unused or disconnected components
-- [ ] Validate consistency across the application 
+### 6.2 Integration Tests & Deployment
+- [ ] 6.2.1 Optional: write an E2E test with something like Cypress or Playwright
+- [ ] 6.2.2 Confirm final npm run build produces /dist
+- [ ] 6.2.3 Deploy the bundle to a static host (e.g., Vercel, Netlify) 
