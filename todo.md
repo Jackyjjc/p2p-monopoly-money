@@ -24,25 +24,25 @@
 - [x] 2.2.2 Add broadcast(message) that loops over all connected peers and sends the message
 - [x] 2.2.3 Emit an 'message' event whenever a connected peer sends data
 
-## 3. Implement Game Logic (GameService)
+## 3. Implement Game Logic (GameStateReducer & GameContext)
 
-### 3.1 Set Up GameService Class
-- [x] 3.1.1 Accept PeerService via constructor
-- [x] 3.1.2 In initGame, set or load a GameState. Decide if local user is admin
-- [x] 3.1.3 Listen to 'peer:connect' events so admin can add the new player to the game
+### 3.1 Set Up GameStateReducer
+- [x] 3.1.1 Create pure functional reducer class with static methods
+- [x] 3.1.2 Implement core state transformation methods (processTransaction, startGame, etc.)
+- [x] 3.1.3 Define a main gameReducer function that maps actions to reducer methods
 
-### 3.2 Core Methods (Add/Update Player, Stash, Transactions)
-- [x] 3.2.1 addPlayer(playerId, playerName?) → modifies local GameState if admin
-- [x] 3.2.2 updateStash(...) → modifies stashes in local GameState
-- [x] 3.2.3 processTransaction(transaction) → checks balances, if admin, updates and broadcasts. If not admin, forward to admin
-- [x] 3.2.4 syncState(incomingGameState) → merges if incomingGameState.version > currentGameState.version
+### 3.2 Create GameContext Provider
+- [x] 3.2.1 Define React Context with GameState and dispatch
+- [x] 3.2.2 Implement GameProvider that uses the gameReducer
+- [x] 3.2.3 Create useEffect hooks to handle PeerService integration
+- [x] 3.2.4 Implement side effects for broadcasting state changes when admin
 
 ## 4. Build React State & Context
 
 ### 4.1 GameContext & Reducer
-- [ ] 4.1.1 Create GameContext.tsx with React.createContext()
-- [ ] 4.1.2 Define the gameReducer(state, action) that handles e.g. SYNC_STATE, START_GAME
-- [ ] 4.1.3 Provide a GameProvider that wraps the app, storing [state, dispatch]
+- [x] 4.1.1 Create GameContext.tsx with React.createContext()
+- [x] 4.1.2 Define the gameReducer(state, action) that handles e.g. SYNC_STATE, START_GAME
+- [x] 4.1.3 Provide a GameProvider that wraps the app, storing [state, dispatch]
 
 ### 4.2 Local Storage & Initialization
 - [ ] 4.2.1 On app start, check if local storage has a gameState. If so, dispatch it to the reducer
@@ -53,18 +53,18 @@
 
 ### 5.1 HomePage
 - [ ] 5.1.1 Provide an input for the user's display name
-- [ ] 5.1.2 "Create Game" button: calls GameService.initGame(), sets local user as admin
+- [ ] 5.1.2 "Create Game" button: calls GameStateReducer.initGame(), sets local user as admin
 - [ ] 5.1.3 "Join Game" button: prompts for admin's peerId, calls PeerService.connectToPeer(...)
 
 ### 5.2 LobbyPage
 - [ ] 5.2.1 Display list of players and stashes from the GameState
 - [ ] 5.2.2 If admin, allow adding stash: input fields for name/balance, "Add" button
-- [ ] 5.2.3 Provide "Start Game" button → calls GameService.startGame()
+- [ ] 5.2.3 Provide "Start Game" button → dispatch START_GAME action
 
 ### 5.3 GamePage
 - [ ] 5.3.1 Show a transaction "dashboard" of balances for all players and stashes
 - [ ] 5.3.2 "New Transaction" button → open a modal with fields for sender, receiver, amount
-- [ ] 5.3.3 On confirm, call GameService.processTransaction(transaction) or forward to admin
+- [ ] 5.3.3 On confirm, dispatch ADD_TRANSACTION action which handles admin vs. non-admin flows
 
 ### 5.4 GameEndedPage
 - [ ] 5.4.1 Render final balances (or just show the read-only version of GameState)
@@ -74,7 +74,7 @@
 
 ### 6.1 Unit Tests
 - [ ] 6.1.1 For PeerService, mock PeerJS or use a test harness to connect two peers
-- [ ] 6.1.2 For GameService, test adding stashes, players, transactions. Confirm version updates
+- [ ] 6.1.2 For GameStateReducer, test pure functions for adding stashes, players, transactions
 
 ### 6.2 Integration Tests & Deployment
 - [ ] 6.2.1 Optional: write an E2E test with something like Cypress or Playwright

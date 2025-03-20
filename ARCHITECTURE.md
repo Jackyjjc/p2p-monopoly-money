@@ -12,9 +12,9 @@ This document outlines the architecture for the **P2P Money Tracker** applicatio
 
 - **Peer-to-peer communication**: Browser-based via WebRTC (PeerJS).
 - **Decentralized architecture**: No central server beyond the initial signaling.
-- **Star Topology** (MVP Approach): One player (the “Admin” or “Leader”) relays all transactions to other peers.
+- **Star Topology** (MVP Approach): One player (the "Admin" or "Leader") relays all transactions to other peers.
 - **Real-time transaction processing**: Transactions are sent, validated, and broadcast immediately.
-- **Local data persistence**: Game state is persisted in each client’s local storage for continuity.
+- **Local data persistence**: Game state is persisted in each client's local storage for continuity.
 - **Transaction validation**: Ensures data integrity and consistent game balances.
 
 ---
@@ -26,7 +26,7 @@ P2P Money Tracker uses a **React** application (TypeScript-based) structured int
 1. **UI Layer**: React components that display pages and modals to the user.  
 2. **State Management**: A global React Context with a `useReducer` for game state, plus local storage for offline persistence.  
 3. **Peer Communication**: A `PeerService` built on PeerJS to manage WebRTC connections.  
-4. **Business Logic Services**: A `GameService` that validates and processes transactions, handles game configuration, and interacts with the `PeerService`.
+4. **Business Logic**: A pure functional `GameStateReducer` that handles all game state transformations.
 
 ### Directory Structure (Illustrative)
 
@@ -65,13 +65,26 @@ See INTERFACES_AND_EVENTS.md file for details about the data model.
 
 `PeerService` stays agnostic to the game logic; it simply sends/receives data.
 
-### 4.2 `GameService`
-**Goal**: Encapsulate all game logic and manage the `GameState`.
+### 4.2 `GameContext` and `GameStateReducer`
+**Goal**: Provide a central state management solution and pure functional state transformations.
 
-- **Create and configure game** (e.g., set stashes, initial balances, add/remove players).
-- **Process transactions**: Validate, apply them, update balances, mark conflicting or invalid transactions as rejected.
-- **Handle game lifecycle**: transitions from `configuring` → `active` → `ended`.
-- **Maintain state authority**: The admin’s `GameService` is the source of truth, broadcasting updates to all players via `PeerService`.
+#### `GameStateReducer`
+- **Pure functional**: Takes current state and an action, returns new state without side effects.
+- **Process transactions**: Validates and applies transactions, updates balances.
+- **Handle game lifecycle**: Functions for transitions between `configuring` → `active` → `ended` states.
+- **Game configuration**: Methods for adding/updating players, stashes, and other game elements.
+
+#### `GameContext`
+- **Provides state access**: Wraps the app with a React Context that contains the game state.
+- **Dispatches actions**: Exposes a dispatch function to trigger state changes.
+- **Handles P2P integration**: Uses useEffect hooks to:
+  - Subscribe to PeerService events
+  - Broadcast state changes to connected peers
+  - Process incoming peer messages
+
+This approach separates:
+- **Pure logic** (GameStateReducer - what should happen)
+- **State management & side effects** (GameContext - when and how it happens)
 
 ---
 
@@ -81,27 +94,28 @@ See INTERFACES_AND_EVENTS.md file for details about the data model.
 1. **PeerService Initialization**: User obtains a `peerId` from the signaling server.
 2. **Username Entry**: User provides a display name (player name).
 3. **Create or Join**: User chooses:
-   - **Create a New Game**: Becomes admin.  
-   - **Join an Existing Game**: Must have admin’s `peerId` to connect.
+   - **Create a New Game**: Becomes admin, initializes GameContext with a new GameState.
+   - **Join an Existing Game**: Must have admin's `peerId` to connect.
 
 ### 5.2 Lobby (Configuring Stage)
 1. **Admin** can:
-   - Add/remove `Stash` objects.
-   - Configure player balances.
+   - Add/remove `Stash` objects via dispatch actions.
+   - Configure player balances via dispatch actions.
    - Confirm which players are in the game.
 2. **Players** see limited data (such as existing stashes, other players) but cannot edit them.
-3. **Start Game**: Admin switches game status to `active`, broadcasts final initial state.
+3. **Start Game**: Admin dispatches a START_GAME action, broadcasts final initial state.
 
 ### 5.3 Active Game
 1. **Transactions**:
    - A player (including admin) initiates a transaction (send or receive from stash/player).
-   - Request is first checked locally and then sent to the admin for validation and official state update.
+   - Player dispatches an ADD_TRANSACTION action.
+   - For non-admin players, this is relayed to the admin via PeerService.
 2. **Admin Validation**:
-   - Admin checks the transaction for correctness (e.g., sufficient funds).
-   - If valid, updates `GameState` (e.g., modifies balances, appends a `Transaction`).
+   - Admin's GameStateReducer validates the transaction (e.g., sufficient funds).
+   - If valid, processes the transaction and updates GameState via reducer.
    - Broadcasts the new state to all players.
 3. **Real-Time UI**:
-   - Each client’s reducer processes the new state, updating balances, transaction history, etc.
+   - Each client's reducer processes the new state via a SYNC_STATE action.
 4. **Disconnections**:
    - If the admin disconnects, no transactions can be processed until they reconnect.
    - Players remain in read-only mode, with local state intact.
@@ -116,7 +130,8 @@ See INTERFACES_AND_EVENTS.md file for details about the data model.
 ## 6. State Management
 
 ### 6.1 Single Global Context & `useReducer`
-- A single **GameContext** provides the `GameState` and a reducer-based dispatch.
+- A single **GameContext** provides the `GameState` and a reducer-based dispatch function.
+- **GameStateReducer** contains all pure functions for state transformations.
 - **Actions** describe high-level events (e.g., `START_GAME`, `ADD_TRANSACTION`, `SYNC_STATE`, `END_GAME`).
 - **Versioning** ensures that out-of-date updates are ignored if a newer version has already been applied.
 
@@ -139,7 +154,7 @@ type GameAction =
 
 ### 7.1 Connection Errors
 - Connection failures to the signaling server or peer disconnections raise clear UI alerts.
-- Retrying connections or displaying “admin offline” messages ensures clarity for players.
+- Retrying connections or displaying "admin offline" messages ensures clarity for players.
 
 ### 7.2 Transaction Errors
 - **Client-Side Validation**: Basic checks (e.g., non-negative amounts).
@@ -176,7 +191,9 @@ type GameAction =
 ## 9. Summary of Architecture Decisions
 
 1. **Star Topology with Admin as Leader**: The admin acts as a single source of truth.  
-2. **Single Global React Context**: Simplifies state management via a single `useReducer` approach.  
+2. **Single Global React Context with Reducer**: Simplifies state management with separation of concerns:
+   - `GameContext` for state access and side effects
+   - `GameStateReducer` for pure state transformations
 3. **Versioned State Updates**: Ensures reliable synchronization among peers.  
 4. **Local Storage for Persistence**: Provides continuity across page reloads.  
 5. **Admin-Only Configuration**: Prevents confusion and conflicts by centralizing major configuration tasks.
@@ -185,7 +202,7 @@ type GameAction =
 
 ## Potential Contradictions or Areas of Caution
 
-1. **“Decentralized” vs. Star Topology**  
+1. **"Decentralized" vs. Star Topology**  
    - Despite calling it decentralized, the MVP uses a star topology. In practice, the admin is a single point of failure. This might be acceptable for an MVP but is not a purely decentralized model.
 
 2. **Scalability**  
@@ -215,16 +232,16 @@ Below is a proposed outline of the **React pages** and **components** needed to 
 - Allows a user to:
   1. Enter a display name.
   2. Choose to **Create a New Game** (and become Admin).
-  3. Join an existing game with an **Admin’s peerId**.
+  3. Join an existing game with an **Admin's peerId**.
 
 **Key Elements**:
 - **Username input** field (local state or global context).
 - **Create New Game** button → triggers creating a new `GameState` and generating a new `peerId` via `PeerService`.
-- **Join Existing Game** button → prompts user to enter the admin’s peerId, attempts connection via `PeerService`.
+- **Join Existing Game** button → prompts user to enter the admin's peerId, attempts connection via `PeerService`.
 - Basic connection status indicator to show readiness from the `PeerService`.
 
 **State/Props**:
-- State for “displayName” text.
+- State for "displayName" text.
 - Optional error/notification states (e.g., connection error).
 
 ---
@@ -233,7 +250,7 @@ Below is a proposed outline of the **React pages** and **components** needed to 
 **File**: `src/pages/LobbyPage.tsx`
 
 **Purpose**:
-- Displays the game “lobby,” which is the **configuring** stage where Admin sets up the game (players, stashes) and others wait.
+- Displays the game "lobby," which is the **configuring** stage where Admin sets up the game (players, stashes) and others wait.
 - Only the Admin can modify game settings:
   - Add/remove `Stash` objects.
   - Configure player balances.
@@ -269,7 +286,7 @@ Below is a proposed outline of the **React pages** and **components** needed to 
    - A button or modal to create a new transaction:
      - Send from a player/stash to another player/stash.
      - Enter amount and optional note/description.
-   - “Submit” triggers a request to the admin for validation and broadcast.
+   - "Submit" triggers a request to the admin for validation and broadcast.
 4. **Connection Status**:
    - Indicate if the admin or any peers are disconnected (admin is critical).
 5. **End Game** button (admin-only):
@@ -278,7 +295,7 @@ Below is a proposed outline of the **React pages** and **components** needed to 
 
 **State/Props**:
 - Subscribes to global `GameContext` for real-time changes (transactions, balances).
-- Dispatches `ADD_TRANSACTION` or calls a method in `GameService` (which ultimately does the admin check).
+- Dispatches `ADD_TRANSACTION` event
 
 ---
 
@@ -292,7 +309,7 @@ Below is a proposed outline of the **React pages** and **components** needed to 
 **Key Elements**:
 - **Final Balances** of players/stashes.
 - **Complete Transaction History** for reference.
-- “Return to Home” link or button to reset the app or start a new game.
+- "Return to Home" link or button to reset the app or start a new game.
 
 **State/Props**:
 - Reads the final `GameState` (with `status = 'ended'`).
@@ -364,13 +381,13 @@ Below are example components that each page may utilize. These components are ty
 - Typically triggered in `TransactionModal`.
 - The flow:
   1. User fills out form → local validation (non-negative amount, etc.).
-  2. “Send” → call `GameService.requestTransaction(...)`.
-  3. If user is admin, it directly applies the transaction and dispatches.  
-     If user is not admin, it sends a message to admin via `PeerService`.
+  2. "Send" → dispatch an ADD_TRANSACTION action.
+  3. If user is admin, the GameStateReducer directly processes the transaction.
+     If user is not admin, GameContext sends the action to admin via `PeerService`.
 
 ### 3.3 **Broadcasting State Changes**
 - When the admin changes the game configuration or processes a transaction, it updates the `GameState` locally (dispatch).
-- Then, the updated state is broadcast to all connected peers.
+- Then, GameContext broadcasts the updated state to all connected peers via PeerService.
 - Peers receive the new state (via `PeerService` listener) and dispatch a `SYNC_STATE` action to merge it.
 
 ---
@@ -404,8 +421,6 @@ Below are example components that each page may utilize. These components are ty
     GameContext.tsx           # useReducer, main game state
   /services
     PeerService.ts            # PeerJS abstraction
-    GameService.ts            # Business logic
-    ...
   /types
     index.ts                  # All TS interfaces: Player, Stash, Transaction, GameState
   ...
@@ -432,4 +447,4 @@ By structuring the P2P Money Tracker application with these pages and components
 - **GamePage** manages real-time transactions.
 - **GameEndedPage** or an ended-game view presents final results.
 
-Each page and component leverages the global `GameContext`, with the `PeerService` and `GameService` as underlying layers for synchronization and business logic. This approach should help maintain a clear separation of concerns, making future expansions and feature additions (e.g., additional transaction types, custom UI themes, or advanced error handling) more straightforward.
+Each page and component leverages the global `GameContext`, with the `PeerService` as underlying layers for synchronization and business logic. This approach should help maintain a clear separation of concerns, making future expansions and feature additions (e.g., additional transaction types, custom UI themes, or advanced error handling) more straightforward.

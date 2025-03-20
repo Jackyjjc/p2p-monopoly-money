@@ -1,5 +1,5 @@
 /**
- * GameStateUpdater provides pure functional methods to modify game state
+ * GameStateReducer provides pure functional methods to modify game state
  * Each method takes a game state and returns a new game state without side effects
  */
 import { v4 as uuidv4 } from 'uuid';
@@ -11,7 +11,17 @@ import {
 } from '../types';
 import { generateGameId, generateStashId, generateTransactionId } from '../utils';
 
-export class GameStateUpdater {
+// Define GameAction type
+export type GameAction =
+  | { type: 'START_GAME'; payload: { startedAt: number } }
+  | { type: 'ADD_TRANSACTION'; payload: Transaction }
+  | { type: 'END_GAME'; payload: { endedAt: number } }
+  | { type: 'SYNC_STATE'; payload: GameState }
+  | { type: 'ADD_PLAYER'; payload: { playerId: string, playerName?: string } }
+  | { type: 'ADD_STASH'; payload: { name: string, balance?: number, isInfinite?: boolean } }
+  | { type: 'UPDATE_STASH'; payload: { stashId: string, updates: Partial<Stash> } };
+
+export class GameStateReducer {
   /**
    * Initializes a new GameState
    * @param peerId Current user's peer ID
@@ -372,4 +382,51 @@ export class GameStateUpdater {
   private static isInfiniteStash(state: GameState, id: string): boolean {
     return state.stashes[id]?.isInfinite || false;
   }
-} 
+}
+
+/**
+ * Game reducer function that handles all game actions
+ * @param state Current game state
+ * @param action Action to process
+ * @returns Updated game state
+ */
+export const gameReducer = (state: GameState, action: GameAction): GameState => {
+  switch (action.type) {
+    case 'START_GAME':
+      return GameStateReducer.startGame(state);
+
+    case 'ADD_TRANSACTION':
+      return GameStateReducer.processTransaction(state, action.payload);
+
+    case 'END_GAME':
+      return GameStateReducer.endGame(state);
+
+    case 'SYNC_STATE':
+      return GameStateReducer.syncState(state, action.payload);
+      
+    case 'ADD_PLAYER':
+      return GameStateReducer.addPlayer(
+        state, 
+        action.payload.playerId, 
+        action.payload.playerName
+      );
+      
+    case 'ADD_STASH':
+      return GameStateReducer.addStash(
+        state,
+        action.payload.name,
+        action.payload.balance,
+        action.payload.isInfinite
+      );
+      
+    case 'UPDATE_STASH':
+      return GameStateReducer.updateStash(
+        state,
+        action.payload.stashId,
+        action.payload.updates
+      );
+
+    default:
+      return state;
+  }
+}; 

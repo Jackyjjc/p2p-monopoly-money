@@ -3,4 +3,4 @@
  */
 export * from './GameService';
 export * from './PeerService';
-export * from './GameStateUpdater'; 
+export * from '../contexts/GameStateUpdater'; 

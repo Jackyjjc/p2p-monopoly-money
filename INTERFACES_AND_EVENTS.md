@@ -1,6 +1,6 @@
 # P2P Money Tracker – Interfaces & Events
 
-This document provides a reference for the core TypeScript interfaces, as well as the key events used by the major services (`PeerService` and `GameService`) in the **P2P Money Tracker** application.  
+This document provides a reference for the core TypeScript interfaces, as well as the key events used by the major services (`PeerService`) and components (`GameContext`, `GameStateReducer`) in the **P2P Money Tracker** application.  
 
 ---
 
@@ -218,72 +218,158 @@ export type PeerEventType =
 
 ---
 
-## 4. GameService
+## 4. GameStateReducer & GameContext
 
-`GameService` encapsulates the core game logic. It validates requests (e.g., transactions) and updates the `GameState` (for the admin). Non-admin clients mostly relay transaction requests to the admin, then handle the updated state upon broadcast.
+The game state management has been implemented using a combination of React Context API for state distribution and a pure functional reducer for state transformations.
+
+### 4.1 GameStateReducer
+
+`GameStateReducer` is a collection of pure functional methods that transform the game state based on actions.
 
 ```ts
-export interface GameService {
+export class GameStateReducer {
   /**
-   * Initializes a new GameState or loads an existing one (e.g., from local storage).
+   * Initializes a new GameState
+   * @param peerId Current user's peer ID
+   * @param options Optional partial GameState to initialize with
+   * @returns A new GameState
    */
-  initGame: (options?: Partial<GameState>) => void;
+  public static initGame(peerId: string, options?: Partial<GameState>): GameState;
 
   /**
-   * Processes a transaction request from a player.
-   * If valid (and we're the admin), it updates the game state.
+   * Add a new player to the game state
+   * @param state Current game state
+   * @param playerId Peer ID of the new player
+   * @param playerName Optional name for the player
+   * @returns Updated game state with the new player
    */
-  processTransaction: (transaction: Transaction) => void;
+  public static addPlayer(state: GameState, playerId: string, playerName?: string): GameState;
 
   /**
-   * Starts the game by setting status to 'active' and records the start time.
+   * Add a new stash to the game state
+   * @param state Current game state
+   * @param name Stash name
+   * @param balance Initial balance
+   * @param isInfinite Whether the stash has infinite balance
+   * @returns Updated game state with the new stash
    */
-  startGame: () => void;
+  public static addStash(state: GameState, name: string, balance?: number, isInfinite?: boolean): GameState;
 
   /**
-   * Ends the game by setting status to 'ended' and records the end time.
+   * Process a transaction between players/stashes
+   * @param state Current game state
+   * @param transaction Transaction to process
+   * @returns Updated game state with the transaction applied
    */
-  endGame: () => void;
+  public static processTransaction(state: GameState, transaction: Transaction): GameState;
 
   /**
-   * Merges a new state (broadcast by the admin) into the local state if the version is higher.
+   * Start the game
+   * @param state Current game state
+   * @returns Updated game state with 'active' status
    */
-  syncState: (incomingState: GameState) => void;
+  public static startGame(state: GameState): GameState;
+
+  /**
+   * End the game
+   * @param state Current game state
+   * @returns Updated game state with 'ended' status
+   */
+  public static endGame(state: GameState): GameState;
+
+  /**
+   * Merge a new state with an existing state, taking the newer version
+   * @param currentState Current local game state
+   * @param incomingState Incoming game state to merge
+   * @returns The updated game state (either current or incoming)
+   */
+  public static syncState(currentState: GameState | null, incomingState: GameState): GameState;
 }
 ```
 
-### 4.1 GameService Events
-
-If `GameService` emits events (for example, to notify the UI or other parts of the system), you might define:
+### 4.2 Game Actions
 
 ```ts
-export type GameServiceEventType =
-  | 'state-updated'       // after the admin updates the state
-  | 'transaction-failed'  // if a transaction is invalid or rejected
-  | 'game-started'
-  | 'game-ended';
+export type GameAction =
+  | { type: 'START_GAME'; payload: { startedAt: number } }
+  | { type: 'ADD_TRANSACTION'; payload: Transaction }
+  | { type: 'END_GAME'; payload: { endedAt: number } }
+  | { type: 'SYNC_STATE'; payload: GameState }
+  | { type: 'ADD_PLAYER'; payload: { playerId: string, playerName?: string } }
+  | { type: 'ADD_STASH'; payload: { name: string, balance?: number, isInfinite?: boolean } }
+  | { type: 'UPDATE_STASH'; payload: { stashId: string, updates: Partial<Stash> } };
 ```
 
-- **`state-updated`**: Emitted when `GameService` has successfully applied changes to the `GameState` (new version).  
-- **`transaction-failed`**: Emitted when a transaction request is invalid (e.g., insufficient funds).  
-- **`game-started`**: Emitted when the admin transitions from `configuring` to `active`.  
-- **`game-ended`**: Emitted when the admin ends the game.
+#### Action Definitions
 
-(These events are optional depending on the implementation approach—some teams rely solely on the reducer or the `PeerService` messages instead of separate "service events.")
+1. **`START_GAME`**  
+   - Used by the admin to transition from `configuring` to `active`.
+   - Payload contains `startedAt`.
+
+2. **`ADD_TRANSACTION`**  
+   - Adds a single new transaction to the list (and updates balances accordingly).
+   - Payload contains the `Transaction`.
+
+3. **`END_GAME`**  
+   - Used by the admin to mark the game as `ended`.
+   - Payload contains `endedAt`.
+
+4. **`SYNC_STATE`**  
+   - Replaces the current state with the payload `GameState` if the payload's `version` is newer.
+
+5. **`ADD_PLAYER`**
+   - Adds a new player to the game.
+   - Payload contains `playerId` and optional `playerName`.
+
+6. **`ADD_STASH`**
+   - Adds a new stash to the game.
+   - Payload contains `name`, optional `balance`, and optional `isInfinite`.
+
+7. **`UPDATE_STASH`**
+   - Updates properties of an existing stash.
+   - Payload contains `stashId` and `updates` (partial Stash object).
+
+### 4.3 GameContext
+
+`GameContext` is a React Context that provides the game state and dispatch function to components, along with handling side effects for P2P communication.
+
+```tsx
+interface GameContextValue {
+  state: GameState;
+  dispatch: React.Dispatch<GameAction>;
+  peerService: PeerService | undefined;
+}
+
+export const GameProvider: React.FC<{
+  children: ReactNode;
+  initialState?: GameState;
+  peerService?: PeerService;
+}>;
+
+export const useGameContext: () => GameContextValue;
+```
+
+The `GameProvider` component:
+1. Initializes a reducer with the provided initial state
+2. Subscribes to PeerService events to handle P2P messages
+3. Broadcasts state changes if the current user is admin
+4. Provides state and dispatch function to all child components
 
 ---
 
 ## 5. Putting It All Together
 
-- **UI Layer** calls `GameService` methods (e.g., `processTransaction`).
-- `GameService` applies business logic, updates the `GameState`, then:
-  - Uses `PeerService` to broadcast changes if this client is the admin.
-  - Or if a non-admin client, it just sends the request to the admin.
-- The **React reducer** consumes the new or merged `GameState` to update the UI.
+- **UI Components** dispatch actions via the `useGameContext` hook.
+- `GameContext` handles communication with `PeerService`:
+  - For admin: broadcasts state changes to all peers after state updates
+  - For non-admin: relays transaction requests to admin
+- `GameStateReducer` provides pure functions for all state transformations
+- The React component tree re-renders when state changes
 
 This architecture cleanly separates responsibilities:
-- **`PeerService`**: Networking (WebRTC)  
-- **`GameService`**: Domain logic (validating transactions, game lifecycle)  
-- **`GameContext` & Reducer**: Local state representation for React components
+- **`PeerService`**: Networking (WebRTC)
+- **`GameStateReducer`**: Pure state transformations (no side effects)
+- **`GameContext`**: State distribution and side effects management
+- **React Components**: UI representation of the game state
 
 By following these interfaces and event definitions, your code remains organized, testable, and easier to maintain.
