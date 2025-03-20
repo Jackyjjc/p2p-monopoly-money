@@ -134,7 +134,7 @@ export type GameAction =
    - Payload contains `endedAt`.
 
 4. **`SYNC_STATE`**  
-   - Replaces the current state with the payload `GameState` if the payload’s `version` is newer.
+   - Replaces the current state with the payload `GameState` if the payload's `version` is newer.
 
 ---
 
@@ -227,30 +227,28 @@ export interface GameService {
   /**
    * Initializes a new GameState or loads an existing one (e.g., from local storage).
    */
-  initGame: (options?: Partial<GameState>) => GameState;
+  initGame: (options?: Partial<GameState>) => void;
 
   /**
    * Processes a transaction request from a player.
-   * If valid (and we're the admin), it updates the game state and returns the updated Transaction.
+   * If valid (and we're the admin), it updates the game state.
    */
-  processTransaction: (transaction: Transaction) => Transaction | null;
+  processTransaction: (transaction: Transaction) => void;
 
   /**
    * Starts the game by setting status to 'active' and records the start time.
-   * Returns the updated GameState.
    */
-  startGame: () => GameState;
+  startGame: () => void;
 
   /**
    * Ends the game by setting status to 'ended' and records the end time.
-   * Returns the updated GameState.
    */
-  endGame: () => GameState;
+  endGame: () => void;
 
   /**
    * Merges a new state (broadcast by the admin) into the local state if the version is higher.
    */
-  syncState: (incomingState: GameState) => GameState;
+  syncState: (incomingState: GameState) => void;
 }
 ```
 
@@ -271,7 +269,7 @@ export type GameServiceEventType =
 - **`game-started`**: Emitted when the admin transitions from `configuring` to `active`.  
 - **`game-ended`**: Emitted when the admin ends the game.
 
-(These events are optional depending on the implementation approach—some teams rely solely on the reducer or the `PeerService` messages instead of separate “service events.”)
+(These events are optional depending on the implementation approach—some teams rely solely on the reducer or the `PeerService` messages instead of separate "service events.")
 
 ---
 

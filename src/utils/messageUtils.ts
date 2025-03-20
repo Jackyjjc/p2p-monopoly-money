@@ -1,7 +1,7 @@
 /**
  * Utility functions for handling message serialization and deserialization
  */
-import { PeerMessageType, ErrorMessage } from '../types/peerMessages';
+import { PeerMessageType, ErrorMessage, StateSyncMessage } from '../types/peerMessages';
 
 /**
  * Creates an error message
@@ -14,6 +14,20 @@ export function createErrorMessage(code: string, message: string): ErrorMessage 
     payload: {
       code,
       message
+    }
+  };
+}
+
+/**
+ * Creates a data message with the specified payload
+ * @param payload The payload to send
+ * @returns Data message
+ */
+export function createDataMessage(_targetPeerId: string, payload: any): StateSyncMessage {
+  return {
+    type: PeerMessageType.STATE_SYNC,
+    payload: {
+      gameState: payload
     }
   };
 }

@@ -3,33 +3,18 @@
  * It exposes methods to change the game state and query connection status
  * UI and other components should not directly modify the game state or have access to the peer service
  */
-import { EventEmitter } from 'events';
-import { v4 as uuidv4 } from 'uuid';
 import { 
   GameState, 
   Player, 
   Stash, 
-  Transaction,
-  DataMessage
+  Transaction
 } from '../types';
+import { PeerServiceMessage, PeerMessageType } from '../types/peerMessages';
 import { PeerService } from './PeerService';
 import { createDataMessage } from '../utils';
+import { GameStateUpdater } from './GameStateUpdater';
 
-// Game events
-export enum GameEvent {
-  STATE_CHANGED = 'state_changed',
-  PLAYER_JOINED = 'player_joined',
-  PLAYER_LEFT = 'player_left',
-  TRANSACTION_ADDED = 'transaction_added',
-  STASH_ADDED = 'stash_added',
-  STASH_UPDATED = 'stash_updated',
-  ADMIN_CHANGED = 'admin_changed',
-  GAME_STARTED = 'game_started',
-  GAME_ENDED = 'game_ended',
-  ERROR = 'error'
-}
-
-export class GameService extends EventEmitter {
+export class GameService {
   private isAdmin: boolean = false;
 
   private peerService: PeerService;
@@ -39,7 +24,6 @@ export class GameService extends EventEmitter {
    * Private constructor to enforce singleton pattern
    */
   private constructor(peerService: PeerService) {
-    super();
     this.peerService = peerService;
     this.setupEventListeners();
   }
@@ -55,56 +39,25 @@ export class GameService extends EventEmitter {
     
     // Listen for messages from peers
     this.peerService.on('message', ({ peerId, message }: { peerId: string, message: any }) => {
-      this.handleDataMessage(peerId, message as DataMessage);
+      this.handlePeerMessage(peerId, message as PeerServiceMessage);
     });
   }
 
   /**
-   * Create a new game state
-   * @param displayName Display name for the game
+   * Initializes a new GameState or loads an existing one
+   * @param options Optional partial GameState to initialize with
    */
-  public createNewGame(displayName: string = 'New Game', playerName: string = 'Admin'): void {
+  public initGame(options?: Partial<GameState>): void {
     const peerId = this.peerService.getPeerId();
     if (!peerId) {
       throw new Error('Peer ID not available. Make sure PeerService is initialized.');
     }
 
-    this.isAdmin = true;
-
-    // Create a new player for the current user (admin)
-    const player: Player = {
-      peerId,
-      name: playerName, // Default name, can be changed later
-      balance: 0,
-      isAdmin: true,
-    };
-
-    // Create initial game state
-    this.gameState = {
-      id: uuidv4(),
-      displayName,
-      status: 'configuring',
-      players: { [peerId]: player },
-      stashes: {},
-      transactions: [],
-      createdAt: Date.now(),
-      version: 1
-    };
+    // Use GameStateUpdater to initialize the game state
+    this.gameState = GameStateUpdater.initGame(peerId, options);
     
-    // Emit state changed event
-    this.emit(GameEvent.STATE_CHANGED, this.gameState);
-  }
-
-  /**
-   * Check if the game has started
-   * @returns True if the game has started (status is 'active' or 'ended')
-   */
-  private hasGameStarted(): boolean {
-    if (!this.gameState) {
-      return false;
-    }
-    
-    return this.gameState.status === 'active' || this.gameState.status === 'ended';
+    // Check if current user is admin
+    this.isAdmin = !!this.gameState.players[peerId]?.isAdmin;
   }
 
   /**
@@ -121,32 +74,12 @@ export class GameService extends EventEmitter {
       throw new Error('Game not initialized');
     }
 
-    // Check if the player already exists
-    if (!this.gameState.players[remotePeerId]) {
-      // Check if the game has already started
-      if (this.hasGameStarted()) {
-        this.emit(GameEvent.ERROR, {
-          code: 'game_already_started',
-          message: 'Cannot add new players after the game has started.'
-        });
-        return;
-      }
-      
-      // Add new player
-      this.gameState.players[remotePeerId] = {
-        peerId: remotePeerId,
-        name: `Player ${Object.keys(this.gameState.players).length + 1}`,
-        balance: 0,
-        isAdmin: false,
-      };
-      
-      // Increment version
-      this.gameState.version++;
-      
+    try {
+      // Use GameStateUpdater to add the player to the game state
+      this.gameState = GameStateUpdater.addPlayer(this.gameState, remotePeerId);
       this.broadcastGameState();
-      
-      // Emit player joined event
-      this.emit(GameEvent.PLAYER_JOINED, this.gameState.players[remotePeerId]);
+    } catch (error) {
+      console.error('Error handling peer connect:', error);
     }
   }
 
@@ -155,26 +88,26 @@ export class GameService extends EventEmitter {
    * @param senderId Peer ID of the sender
    * @param message Data message
    */
-  private handleDataMessage(senderId: string, message: DataMessage): void {
+  private handlePeerMessage(senderId: string, message: PeerServiceMessage): void {
     // if i'm the sender, ignore the message
     if (senderId === this.peerService.getPeerId()) {
       return;
     }
 
     try {
-      // Parse the game state from the message payload
-      const receivedState = JSON.parse(message.payload) as GameState;
-      
-      // Validate the received state
-      if (!receivedState || !receivedState.id) {
-        console.error('Invalid game state received:', receivedState);
-        return;
-      }
-      
-      // If we don't have a game state yet, or our version is older, update it
-      if (!this.gameState || receivedState.version > this.gameState.version) {
-        this.gameState = receivedState
-        this.emit(GameEvent.STATE_CHANGED, this.gameState);
+      // Handle different message types based on the type
+      if (message.type === PeerMessageType.STATE_SYNC) {
+        // Parse the game state from the message payload
+        const receivedState = message.payload.gameState as GameState;
+        
+        // Validate the received state
+        if (!receivedState || !receivedState.id) {
+          console.error('Invalid game state received:', receivedState);
+          return;
+        }
+        
+        // Use GameStateUpdater to sync the state
+        this.gameState = GameStateUpdater.syncState(this.gameState, receivedState);
       }
     } catch (error) {
       console.error('Error handling data message:', error);
@@ -220,8 +153,8 @@ export class GameService extends EventEmitter {
    * @param updates Partial player object with updates
    */
   public updatePlayer(playerId: string, updates: Partial<Player>): void {
-    if (!this.gameState || !this.gameState.players[playerId]) {
-      throw new Error(`Player ${playerId} not found`);
+    if (!this.gameState) {
+      throw new Error('Game not initialized');
     }
 
     // Only admin can update other players
@@ -229,26 +162,17 @@ export class GameService extends EventEmitter {
       throw new Error('Only the admin can update other players');
     }
     
-    // If game has started, only allow updating player name
-    if (this.hasGameStarted() && updates.balance !== undefined) {
-      throw new Error('Cannot update player balance after the game has started. Use transactions instead.');
+    try {
+      // Use GameStateUpdater to update the player
+      this.gameState = GameStateUpdater.updatePlayer(this.gameState, playerId, updates);
+      
+      if (this.isAdmin) {
+        this.broadcastGameState();
+      }
+    } catch (error) {
+      console.error('Error updating player:', error);
+      throw error;
     }
-    
-    // Update player properties
-    this.gameState.players[playerId] = {
-      ...this.gameState.players[playerId],
-      ...updates
-    };
-    
-    // Increment version
-    this.gameState.version++;
-    
-    if (this.isAdmin) {
-      this.broadcastGameState();
-    }
-    
-    // Emit state changed event
-    this.emit(GameEvent.STATE_CHANGED, this.gameState);
   }
 
   /**
@@ -256,9 +180,8 @@ export class GameService extends EventEmitter {
    * @param name Stash name
    * @param balance Initial balance
    * @param isInfinite Whether the stash has infinite balance
-   * @returns The created stash
    */
-  public addStash(name: string, balance: number = 0, isInfinite: boolean = false): Stash {
+  public addStash(name: string, balance: number = 0, isInfinite: boolean = false): void {
     if (!this.gameState) {
       throw new Error('Game not initialized');
     }
@@ -268,31 +191,21 @@ export class GameService extends EventEmitter {
       throw new Error('Only the admin can add stashes');
     }
     
-    // Check if the game has already started
-    if (this.hasGameStarted()) {
-      throw new Error('Cannot add new stashes after the game has started');
+    try {
+      // Use GameStateUpdater to add the stash
+      const updatedState = GameStateUpdater.addStash(this.gameState, name, balance, isInfinite);
+      this.gameState = updatedState;
+      this.broadcastGameState();
+      
+      // Get the latest added stash (last key in stashes)
+      const stashId = Object.keys(updatedState.stashes).pop();
+      if (!stashId || !updatedState.stashes[stashId]) {
+        throw new Error('Failed to create stash');
+      }
+    } catch (error) {
+      console.error('Error adding stash:', error);
+      throw error;
     }
-    
-    // Create new stash
-    const stash: Stash = {
-      id: uuidv4(),
-      name,
-      balance,
-      isInfinite
-    };
-    
-    // Add to game state
-    this.gameState.stashes[stash.id] = stash;
-    
-    // Increment version
-    this.gameState.version++;
-    
-    this.broadcastGameState();
-    
-    // Emit stash added event
-    this.emit(GameEvent.STASH_ADDED, stash);
-    
-    return stash;
   }
 
   /**
@@ -301,8 +214,8 @@ export class GameService extends EventEmitter {
    * @param updates Partial stash object with updates
    */
   public updateStash(stashId: string, updates: Partial<Stash>): void {
-    if (!this.gameState || !this.gameState.stashes[stashId]) {
-      throw new Error(`Stash ${stashId} not found`);
+    if (!this.gameState) {
+      throw new Error('Game not initialized');
     }
 
     // Only admin can update stashes
@@ -310,204 +223,53 @@ export class GameService extends EventEmitter {
       throw new Error('Only the admin can update stashes');
     }
     
-    // If game has started, only allow updating stash name
-    if (this.hasGameStarted() && (updates.balance !== undefined || updates.isInfinite !== undefined)) {
-      throw new Error('Cannot update stash balance or infinite status after the game has started. Use transactions instead.');
+    try {
+      // Use GameStateUpdater to update the stash
+      this.gameState = GameStateUpdater.updateStash(this.gameState, stashId, updates);
+      this.broadcastGameState();
+    } catch (error) {
+      console.error('Error updating stash:', error);
+      throw error;
     }
-    
-    // Update stash properties
-    this.gameState.stashes[stashId] = {
-      ...this.gameState.stashes[stashId],
-      ...updates
-    };
-    
-    // Increment version
-    this.gameState.version++;
-    
-    this.broadcastGameState();
-    
-    // Emit stash updated event
-    this.emit(GameEvent.STASH_UPDATED, this.gameState.stashes[stashId]);
   }
 
   /**
-   * Add a new transaction
-   * @param senderId ID of the sender (player or stash)
-   * @param receiverId ID of the receiver (player or stash)
-   * @param amount Transaction amount
-   * @returns The created transaction
+   * Processes a transaction request from a player
+   * @param transaction Transaction to process
    */
-  public addTransaction(senderId: string, receiverId: string, amount: number): Transaction {
+  public processTransaction(transaction: Transaction): void {
     if (!this.gameState) {
       throw new Error('Game not initialized');
     }
 
-    // Only admin can add transactions
-    if (!this.isAdmin) {
-      throw new Error('Only the admin can add transactions');
-    }
-    
-    // Validate transaction
-    if (amount <= 0) {
-      throw new Error('Transaction amount must be positive');
-    }
-    
-    // Check if sender exists (player or stash)
-    const sender = this.gameState.players[senderId] || this.gameState.stashes[senderId];
-    if (!sender) {
-      throw new Error(`Sender ${senderId} not found`);
-    }
-    
-    // Check if receiver exists (player or stash)
-    const receiver = this.gameState.players[receiverId] || this.gameState.stashes[receiverId];
-    if (!receiver) {
-      throw new Error(`Receiver ${receiverId} not found`);
-    }
-    
-    // Check if sender has enough balance (unless it's an infinite stash)
-    if (!this.isInfiniteStash(senderId) && sender.balance < amount) {
-      throw new Error(`Sender ${senderId} has insufficient balance`);
-    }
-    
-    // Create transaction
-    const transaction: Transaction = {
-      id: uuidv4(),
-      timestamp: Date.now(),
-      senderId,
-      receiverId,
-      amount,
-      isEdited: false
-    };
-    
-    // Update balances
-    if (!this.isInfiniteStash(senderId)) {
-      if (this.gameState.players[senderId]) {
-        this.gameState.players[senderId].balance -= amount;
-      } else if (this.gameState.stashes[senderId]) {
-        this.gameState.stashes[senderId].balance -= amount;
-      }
-    }
-    
-    if (!this.isInfiniteStash(receiverId)) {
-      if (this.gameState.players[receiverId]) {
-        this.gameState.players[receiverId].balance += amount;
-      } else if (this.gameState.stashes[receiverId]) {
-        this.gameState.stashes[receiverId].balance += amount;
-      }
-    }
-    
-    // Add transaction to game state
-    this.gameState.transactions.push(transaction);
-    
-    // Increment version
-    this.gameState.version++;
-    
-    this.broadcastGameState();
-    
-    // Emit transaction added event
-    this.emit(GameEvent.TRANSACTION_ADDED, transaction);
-    
-    return transaction;
-  }
-
-  /**
-   * Edit an existing transaction
-   * @param transactionId ID of the transaction to edit
-   * @param newAmount New transaction amount
-   */
-  public editTransaction(transactionId: string, newAmount: number): void {
-    if (!this.gameState) {
-      throw new Error('Game not initialized');
-    }
-
-    // Only admin can edit transactions
-    if (!this.isAdmin) {
-      throw new Error('Only the admin can edit transactions');
-    }
-    
-    // Find the transaction
-    const transactionIndex = this.gameState.transactions.findIndex(t => t.id === transactionId);
-    if (transactionIndex === -1) {
-      throw new Error(`Transaction ${transactionId} not found`);
-    }
-    
-    const transaction = this.gameState.transactions[transactionIndex];
-    
-    if (!transaction) {
-      throw new Error(`Transaction ${transactionId} not found`);
-    }
-    
-    // Validate new amount
-    if (newAmount <= 0) {
-      throw new Error('Transaction amount must be positive');
-    }
-    
-    // Store original amount if this is the first edit
-    if (!transaction.isEdited) {
-      transaction.originalAmount = transaction.amount;
-    }
-    
-    // Calculate the difference in amount
-    const amountDifference = newAmount - transaction.amount;
-    
-    // Update balances
-    if (amountDifference !== 0) {
-      // Adjust sender balance (deduct more or refund)
-      if (!this.isInfiniteStash(transaction.senderId)) {
-        const senderPlayer = this.gameState.players[transaction.senderId];
-        const senderStash = this.gameState.stashes[transaction.senderId];
+    try {
+      // If not admin, forward the transaction request to admin
+      if (!this.isAdmin) {
+        const adminPeerId = Object.keys(this.gameState.players).find(
+          key => this.gameState!.players[key]!.isAdmin
+        );
         
-        if (senderPlayer) {
-          // Check if sender has enough balance for the increase
-          if (amountDifference > 0 && 
-              senderPlayer.balance < amountDifference) {
-            throw new Error(`Sender ${transaction.senderId} has insufficient balance for the edit`);
-          }
-          senderPlayer.balance -= amountDifference;
-        } else if (senderStash) {
-          // Check if stash has enough balance for the increase
-          if (amountDifference > 0 && 
-              senderStash.balance < amountDifference) {
-            throw new Error(`Stash ${transaction.senderId} has insufficient balance for the edit`);
-          }
-          senderStash.balance -= amountDifference;
+        if (!adminPeerId) {
+          throw new Error('Admin not found');
         }
+        
+        // Create transaction request message
+        const dataMessage = createDataMessage(adminPeerId, {
+          type: 'transaction_request',
+          payload: { transaction }
+        });
+        
+        // Send to admin
+        this.peerService.sendToPeer(adminPeerId, dataMessage);
+        return;
       }
       
-      // Adjust receiver balance (add more or deduct)
-      if (!this.isInfiniteStash(transaction.receiverId)) {
-        const receiverPlayer = this.gameState.players[transaction.receiverId];
-        const receiverStash = this.gameState.stashes[transaction.receiverId];
-        
-        if (receiverPlayer) {
-          // Check if receiver has enough balance for the decrease
-          if (amountDifference < 0 && 
-              receiverPlayer.balance < Math.abs(amountDifference)) {
-            throw new Error(`Receiver ${transaction.receiverId} has insufficient balance for the edit`);
-          }
-          receiverPlayer.balance += amountDifference;
-        } else if (receiverStash) {
-          // Check if stash has enough balance for the decrease
-          if (amountDifference < 0 && 
-              receiverStash.balance < Math.abs(amountDifference)) {
-            throw new Error(`Stash ${transaction.receiverId} has insufficient balance for the edit`);
-          }
-          receiverStash.balance += amountDifference;
-        }
-      }
+      // Use GameStateUpdater to process the transaction
+      this.gameState = GameStateUpdater.processTransaction(this.gameState, transaction);
+      this.broadcastGameState();
+    } catch (error) {
+      console.error('Error processing transaction:', error);
     }
-    
-    // Update transaction
-    transaction.amount = newAmount;
-    transaction.isEdited = true;
-    
-    // Increment version
-    this.gameState.version++;
-    
-    this.broadcastGameState();
-    
-    // Emit state changed event
-    this.emit(GameEvent.STATE_CHANGED, this.gameState);
   }
 
   /**
@@ -523,22 +285,14 @@ export class GameService extends EventEmitter {
       throw new Error('Only the admin can start the game');
     }
     
-    // Check if there are any players
-    if (Object.keys(this.gameState.players).length === 0) {
-      throw new Error('Cannot start a game with no players');
+    try {
+      // Use GameStateUpdater to start the game
+      this.gameState = GameStateUpdater.startGame(this.gameState);
+      this.broadcastGameState();
+    } catch (error) {
+      console.error('Error starting game:', error);
+      throw error;
     }
-    
-    // Update game status
-    this.gameState.status = 'active';
-    this.gameState.startedAt = Date.now();
-    
-    // Increment version
-    this.gameState.version++;
-    
-    this.broadcastGameState();
-    
-    // Emit game started event
-    this.emit(GameEvent.GAME_STARTED, this.gameState);
   }
 
   /**
@@ -554,26 +308,34 @@ export class GameService extends EventEmitter {
       throw new Error('Only the admin can end the game');
     }
     
-    // Update game status
-    this.gameState.status = 'ended';
-    this.gameState.endedAt = Date.now();
-    
-    // Increment version
-    this.gameState.version++;
-    
-    this.broadcastGameState();
-    
-    // Emit game ended event
-    this.emit(GameEvent.GAME_ENDED, this.gameState);
+    try {
+      // Use GameStateUpdater to end the game
+      this.gameState = GameStateUpdater.endGame(this.gameState);
+      this.broadcastGameState();
+    } catch (error) {
+      console.error('Error ending game:', error);
+      throw error;
+    }
   }
 
   /**
-   * Check if an entity is an infinite stash
-   * @param id Entity ID (player or stash)
-   * @returns True if the entity is an infinite stash
+   * Merges a new state (broadcast by the admin) into the local state if the version is higher
+   * @param incomingState The incoming GameState to sync with
    */
-  private isInfiniteStash(id: string): boolean {
-    return this.gameState?.stashes[id]?.isInfinite || false;
+  public syncState(incomingState: GameState): void {
+    if (!this.gameState) {
+      // If we don't have a game state yet, just use the incoming state
+      this.gameState = incomingState;
+      return;
+    }
+    
+    try {
+      // Use GameStateUpdater to sync the state
+      this.gameState = GameStateUpdater.syncState(this.gameState, incomingState);
+    } catch (error) {
+      console.error('Error syncing state:', error);
+      throw error;
+    }
   }
 
   /**
@@ -590,30 +352,20 @@ export class GameService extends EventEmitter {
       throw new Error('Only the admin can change the game state');
     }
     
-    // Check if the game is in configuring state
-    if (this.gameState.status !== 'configuring') {
-      throw new Error(`Cannot set configuring state when game is in ${this.gameState.status} state`);
+    try {
+      // Use GameStateUpdater to set the configuring state
+      this.gameState = GameStateUpdater.setConfiguringState(this.gameState);
+      this.broadcastGameState();
+    } catch (error) {
+      console.error('Error setting configuring state:', error);
+      throw error;
     }
-    
-    // Update game status
-    this.gameState.status = 'configuring';
-    
-    // Increment version
-    this.gameState.version++;
-    
-    this.broadcastGameState();
-    
-    // Emit state changed event
-    this.emit(GameEvent.STATE_CHANGED, this.gameState);
   }
 
   /**
    * Stop the game service and clean up resources
    */
   public async stop(): Promise<void> {
-    // Clean up event listeners
-    this.removeAllListeners();
-    
     // Stop the peer service
     await this.peerService.stop();
     
