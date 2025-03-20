@@ -116,7 +116,10 @@ export type GameAction =
   | { type: 'START_GAME'; payload: { startedAt: number } }
   | { type: 'ADD_TRANSACTION'; payload: Transaction }
   | { type: 'END_GAME'; payload: { endedAt: number } }
-  | { type: 'SYNC_STATE'; payload: GameState };
+  | { type: 'SYNC_STATE'; payload: GameState }
+  | { type: 'ADD_PLAYER'; payload: { playerId: string, playerName?: string } }
+  | { type: 'ADD_STASH'; payload: { name: string, balance?: number, isInfinite?: boolean } }
+  | { type: 'UPDATE_STASH'; payload: { stashId: string, updates: Partial<Stash> } };
 ```
 
 #### Action Definitions
@@ -136,6 +139,18 @@ export type GameAction =
 4. **`SYNC_STATE`**  
    - Replaces the current state with the payload `GameState` if the payload's `version` is newer.
 
+5. **`ADD_PLAYER`**
+   - Adds a new player to the game.
+   - Payload contains `playerId` and optional `playerName`.
+
+6. **`ADD_STASH`**
+   - Adds a new stash to the game.
+   - Payload contains `name`, optional `balance`, and optional `isInfinite`.
+
+7. **`UPDATE_STASH`**
+   - Updates properties of an existing stash.
+   - Payload contains `stashId` and `updates` (partial Stash object).
+
 ---
 
 ## 3. PeerService
@@ -143,36 +158,63 @@ export type GameAction =
 `PeerService` is responsible for managing WebRTC connections (via PeerJS), sending/receiving data, and emitting events about the peer-to-peer lifecycle.  
 
 ```ts
-export interface PeerService {
+export class PeerService extends EventEmitter {
   /**
    * Initializes a PeerJS connection and returns the generated peerId.
+   * @param isLeader Whether this peer should be the leader of the star network
+   * @returns Promise that resolves when the peer is connected to the signal server
    */
-  initConnection: () => Promise<string>;
+  public async initConnection(isLeader: boolean = false): Promise<string>;
 
   /**
-   * Connects to a peer (usually the admin) given their peerId.
+   * Connects to a peer using their peer ID
+   * @param remotePeerId The peer ID to connect to
+   * @returns Promise that resolves when connected
    */
-  connectToPeer: (targetPeerId: string) => void;
+  public async connectToPeer(remotePeerId: string): Promise<void>;
 
   /**
-   * Sends a data message to a specific connected peer.
+   * Get the current peer's ID
+   * @returns The peer ID or null if not initialized
    */
-  sendToPeer: (peerId: string, data: PeerMessage) => void;
+  public getPeerId(): string | null;
 
   /**
-   * Broadcasts a data message to all currently connected peers (admin-only usage).
+   * Get all connected peers
+   * @returns Array of peer IDs
    */
-  broadcast: (data: PeerMessage) => void;
+  public getPeers(): string[];
 
   /**
-   * Terminates all peer connections and cleans up resources.
+   * Send a message to all connected peers
+   * @param message The message to send
    */
-  destroy: () => void;
+  public async broadcast(message: PeerServiceMessage): Promise<void>;
 
   /**
-   * Registers an event listener for PeerService events.
+   * Send a message to a specific peer
+   * @param peerId The peer ID to send to
+   * @param message The message to send
    */
-  on: (eventType: PeerEventType, callback: (data: any) => void) => void;
+  public async sendToPeer(peerId: string, message: PeerServiceMessage): Promise<void>;
+
+  /**
+   * Disconnect from a specific peer
+   * @param peerId The peer ID to disconnect from
+   */
+  public async disconnectFromPeer(peerId: string): Promise<void>;
+
+  /**
+   * Check if connected to a specific peer
+   * @param peerId The peer ID to check
+   * @returns True if connected to the peer
+   */
+  public isConnectedToPeer(peerId: string): boolean;
+
+  /**
+   * Stop the PeerJS instance and clean up
+   */
+  public async stop(): Promise<void>;
 }
 ```
 
@@ -183,7 +225,7 @@ export interface PeerService {
  * A generic shape for data sent via PeerJS.
  * Could include transaction requests, state sync broadcasts, etc.
  */
-export interface PeerMessage {
+export interface PeerServiceMessage {
   /** Type of the message (e.g., "transaction", "state", "chat") */
   type: string;
 
@@ -194,27 +236,22 @@ export interface PeerMessage {
 
 ### 3.2 PeerService Event Types
 
-```ts
-export type PeerEventType =
-  | 'connection-open'    // when a connection to a peer is established
-  | 'connection-error'   // when a connection fails to establish
-  | 'connection-close'   // when a peer disconnects
-  | 'data-received';     // when data arrives from a peer
-```
+PeerService emits the following events:
 
-#### Event Definitions
+1. **`status`**  
+   Emitted when the connection status to the signal server changes. Payload: ConnectionStatus enum value.
 
-1. **`connection-open`**  
-   Fired when a new peer connection is successfully established. The callback might receive a simple `peerId` or a more detailed structure.
+2. **`peer:connect`**  
+   Emitted when a new peer connection is established. Payload: remotePeerId (string).
 
-2. **`connection-error`**  
-   Fired when there is an error establishing or maintaining a connection. The callback receives an error object or message.
+3. **`peer:disconnect`**  
+   Emitted when a peer disconnects. Payload: remotePeerId (string).
 
-3. **`connection-close`**  
-   Fired when a peer intentionally disconnects or the connection is lost. The callback receives the `peerId` of the disconnected peer.
+4. **`error`**  
+   Emitted when any error occurs in the peer connection or message handling. Payload: { message: string, originalError: Error }.
 
-4. **`data-received`**  
-   Fired when any `PeerMessage` is received from a connected peer. The callback receives the parsed `PeerMessage`.
+5. **`message`**  
+   Emitted when a message is received from a peer. Payload: { peerId: string, message: Message }.
 
 ---
 
@@ -246,6 +283,15 @@ export class GameStateReducer {
   public static addPlayer(state: GameState, playerId: string, playerName?: string): GameState;
 
   /**
+   * Update player information
+   * @param state Current game state
+   * @param playerId Peer ID of the player to update
+   * @param updates Partial player object with updates
+   * @returns Updated game state
+   */
+  public static updatePlayer(state: GameState, playerId: string, updates: Partial<Player>): GameState;
+
+  /**
    * Add a new stash to the game state
    * @param state Current game state
    * @param name Stash name
@@ -254,6 +300,15 @@ export class GameStateReducer {
    * @returns Updated game state with the new stash
    */
   public static addStash(state: GameState, name: string, balance?: number, isInfinite?: boolean): GameState;
+
+  /**
+   * Update a stash
+   * @param state Current game state
+   * @param stashId ID of the stash to update
+   * @param updates Partial stash object with updates
+   * @returns Updated game state
+   */
+  public static updateStash(state: GameState, stashId: string, updates: Partial<Stash>): GameState;
 
   /**
    * Process a transaction between players/stashes
@@ -276,6 +331,13 @@ export class GameStateReducer {
    * @returns Updated game state with 'ended' status
    */
   public static endGame(state: GameState): GameState;
+
+  /**
+   * Set the game to configuring state
+   * @param state Current game state
+   * @returns Updated game state with 'configuring' status
+   */
+  public static setConfiguringState(state: GameState): GameState;
 
   /**
    * Merge a new state with an existing state, taking the newer version

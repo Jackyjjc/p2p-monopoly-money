@@ -1,10 +1,40 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { GameProvider } from './contexts/GameContext';
+import { PeerService } from './services/PeerService';
+import HomePage from './pages/HomePage';
+import JoiningPage from './pages/JoiningPage';
+import './styles/main.css';
 
 const App: React.FC = () => {
+  const [peerService, setPeerService] = useState<PeerService | undefined>(undefined);
+
+  // Initialize PeerService once on app start
+  useEffect(() => {
+    const newPeerService = new PeerService();
+    setPeerService(newPeerService);
+
+    // Cleanup on unmount
+    return () => {
+      newPeerService.stop();
+    };
+  }, []);
+
   return (
-    <div>
-      <h1>P2P Money Tracker</h1>
-    </div>
+    <GameProvider peerService={peerService}>
+      <Router>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/joining" element={<JoiningPage />} />
+          {/* These routes will be implemented later */}
+          <Route path="/lobby" element={<div>Lobby Page - To be implemented</div>} />
+          <Route path="/game" element={<div>Game Page - To be implemented</div>} />
+          <Route path="/game-ended" element={<div>Game Ended Page - To be implemented</div>} />
+          {/* Redirect to home for any unknown routes */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </GameProvider>
   );
 };
 

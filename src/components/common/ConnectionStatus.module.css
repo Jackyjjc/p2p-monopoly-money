@@ -1,0 +1,36 @@
+/* Connection status styles */
+.connectionStatus {
+  margin: 10px 0;
+  font-size: 14px;
+}
+
+.statusIndicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.statusDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.connected {
+  background-color: #4caf50;
+}
+
+.disconnected {
+  background-color: #f44336;
+}
+
+.statusText {
+  font-weight: 500;
+}
+
+.peersList {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #666;
+} 

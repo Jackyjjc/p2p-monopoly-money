@@ -11,3 +11,51 @@ rule "Don't use cd to run npm commands" {
     replacement = command.replace(/^cd .+ && (npm.*)/, "$1")
   }
 } 
+
+# React.js Best Practices
+rule "Follow React.js best practices" {
+  match {
+    file = /\.(jsx|tsx|js|ts)$/
+    content = /.+/
+  }
+  
+  suggest {
+    message = "Follow React.js best practices: use functional components, hooks, proper prop typing, and meaningful component names."
+  }
+}
+
+# Create Reusable Components
+rule "Create reusable components" {
+  match {
+    file = /\.(jsx|tsx|js|ts)$/
+    content = /(<div>.{300,}|<div>[.\n\r]{300,})/
+  }
+  
+  suggest {
+    message = "Consider extracting this large JSX block into a reusable component to improve maintainability."
+  }
+}
+
+# Modular CSS
+rule "Use modular CSS" {
+  match {
+    file = /main\.css$/
+    content = /.{1000,}/
+  }
+  
+  suggest {
+    message = "Keep CSS files modular by creating component-specific CSS files (e.g., ComponentName.module.css) rather than adding to one large main.css file."
+  }
+} 
+
+# Use Reducer Pattern
+rule "Use reducer pattern for complex state" {
+  match {
+    file = /\.(jsx|tsx|js|ts)$/
+    content = /(useState\(.+\).*useState\(.+\).*useState\(.+\))/
+  }
+  
+  suggest {
+    message = "Consider using the useReducer hook instead of multiple useState calls for more predictable state management in complex components."
+  }
+} 

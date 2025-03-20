@@ -28,14 +28,8 @@ export class GameStateReducer {
    * @param options Optional partial GameState to initialize with
    * @returns A new GameState
    */
-  public static initGame(peerId: string, options?: Partial<GameState>): GameState {
-    if (options && options.id) {
-      // Return the provided game state
-      return options as GameState;
-    }
-    
+  public static initGame(peerId: string, playerName: string): GameState {
     // Create a new player for the current user (admin)
-    const playerName = options?.players?.[peerId]?.name || 'Admin';
     const player: Player = {
       peerId,
       name: playerName,
@@ -45,8 +39,8 @@ export class GameStateReducer {
 
     // Create initial game state
     return {
-      id: generateGameId() || uuidv4(),
-      displayName: options?.displayName || 'New Game',
+      id: generateGameId(),
+      displayName: `${playerName}'s Game`,
       status: 'configuring',
       players: { [peerId]: player },
       stashes: {},
