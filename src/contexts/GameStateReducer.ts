@@ -13,6 +13,7 @@ import { generateGameId, generateStashId, generateTransactionId } from '../utils
 
 // Define GameAction type
 export type GameAction =
+  | { type: 'INIT_GAME'; payload: { peerId: string, playerName: string } }
   | { type: 'START_GAME'; payload: { startedAt: number } }
   | { type: 'ADD_TRANSACTION'; payload: Transaction }
   | { type: 'END_GAME'; payload: { endedAt: number } }
@@ -344,9 +345,9 @@ export class GameStateReducer {
    * @param incomingState Incoming game state to merge
    * @returns The updated game state (either current or incoming)
    */
-  public static syncState(currentState: GameState | null, incomingState: GameState): GameState {
+  public static syncState(currentState: GameState, incomingState: GameState): GameState {
     // If we don't have a game state yet, just use the incoming state
-    if (!currentState) {
+    if (!currentState.id) {
       return incomingState;
     }
     
@@ -386,6 +387,9 @@ export class GameStateReducer {
  */
 export const gameReducer = (state: GameState, action: GameAction): GameState => {
   switch (action.type) {
+    case 'INIT_GAME':
+      return GameStateReducer.initGame(action.payload.peerId, action.payload.playerName);
+
     case 'START_GAME':
       return GameStateReducer.startGame(state);
 

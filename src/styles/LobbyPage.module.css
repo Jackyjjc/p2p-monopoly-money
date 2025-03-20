@@ -1,0 +1,129 @@
+.lobby-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.lobby-sections {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.player-section,
+.stash-section {
+  background: #f8f8f8;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.player-list,
+.stash-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.player-list li,
+.stash-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.player-list li.admin {
+  background-color: #f0f7ff;
+  border-left: 3px solid #1976d2;
+}
+
+.admin-badge {
+  background: #1976d2;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.add-stash-form {
+  margin-top: 1.5rem;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"] {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.form-group input[type="checkbox"] {
+  margin-right: 0.5rem;
+}
+
+.add-stash-button,
+.start-game-button {
+  background: #1976d2;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-stash-button:hover,
+.start-game-button:hover {
+  background: #1565c0;
+}
+
+.add-stash-button:disabled,
+.start-game-button:disabled {
+  background: #b0b0b0;
+  cursor: not-allowed;
+}
+
+.start-game-container {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.start-game-button {
+  padding: 1rem 2.5rem;
+  font-size: 1.1rem;
+}
+
+.start-game-hint {
+  color: #e53935;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .lobby-sections {
+    grid-template-columns: 1fr;
+  }
+} 

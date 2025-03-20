@@ -376,7 +376,6 @@ Below are example components that each page may utilize. These components are ty
   ```tsx
   if (!currentPlayer.isAdmin) return null;
   ```
-
 ### 3.2 **Initiating Transactions**
 - Typically triggered in `TransactionModal`.
 - The flow:
@@ -448,3 +447,4 @@ By structuring the P2P Money Tracker application with these pages and components
 - **GameEndedPage** or an ended-game view presents final results.
 
 Each page and component leverages the global `GameContext`, with the `PeerService` as underlying layers for synchronization and business logic. This approach should help maintain a clear separation of concerns, making future expansions and feature additions (e.g., additional transaction types, custom UI themes, or advanced error handling) more straightforward.
+

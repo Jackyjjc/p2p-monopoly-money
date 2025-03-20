@@ -1,7 +1,6 @@
 /**
  * This is a thin wrapper around the PeerJS library.
- * It maintains a star network topology of connected peers where all peers connect to the leader but not each other.
- * The leader is responsible for broadcasting messages to all connected peers and exchanging peer information.
+ * It maintains a peer-to-peer network of connected peers.
  * 
  * Events emitted by PeerService:
  * - 'status': Emitted when the connection status to the signal server changes. Payload: ConnectionStatus enum value.
@@ -19,7 +18,6 @@ export class PeerService extends EventEmitter {
   private initialized: boolean = false;
   private peer: Peer | null = null;
 
-  private leader: string | null = null;
   private connectedPeers: Map<string, DataConnection> = new Map();
   private pendingConnections: Map<string, Promise<void>> = new Map();
 
@@ -32,10 +30,9 @@ export class PeerService extends EventEmitter {
 
   /**
    * Initialize the PeerJS instance, set up event listeners and connect to the signal server.
-   * @param isLeader Whether this peer should be the leader of the star network
    * @returns Promise that resolves when the peer is connected to the signal server and has a peer ID.
    */
-  public async initConnection(isLeader: boolean = false): Promise<string> {
+  public async initConnection(): Promise<string> {
     console.log('PeerService initialize is called');
 
     if (this.initialized) {
@@ -71,9 +68,6 @@ export class PeerService extends EventEmitter {
       // Handle successful connection to the signal server. It means we now has a peer ID and can accept connections from other peers or connect to other peers.
       this.peer?.on('open', (id) => {
         clearTimeout(timeout);
-        if (isLeader) {
-          this.setLeader(id);
-        }
         console.log('Connected to signal server with peer ID:', id);
         resolve(id);
       });
@@ -256,10 +250,6 @@ export class PeerService extends EventEmitter {
       throw new Error('PeerService is not initialized');
     }
 
-    if (!this.isLeader()) { 
-      throw new Error('PeerService is not the leader, only the leader can broadcast messages');
-    }
-
     console.log('Broadcasting message:', message);
     
     const promises = Array.from(this.connectedPeers.keys())
@@ -313,26 +303,6 @@ export class PeerService extends EventEmitter {
       this.connectedPeers.delete(peerId);
       console.log('Disconnected from peer:', peerId);
     }
-  }
-
-  /**
-   * Check if the current peer is the leader
-   * @returns True if the current peer is the leader
-   */
-  private isLeader(): boolean {
-    if (this.peer == null || !this.initialized) {
-      return false;
-    }
-
-    return this.leader === this.peer?.id;
-  }
-
-  /**
-   * Set the leader of the star network
-   * @param leader The peer ID of the leader
-   */
-  private setLeader(leader: string): void {
-    this.leader = leader;
   }
 
   /**

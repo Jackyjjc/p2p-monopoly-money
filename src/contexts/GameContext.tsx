@@ -1,20 +1,8 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { GameState } from '../types';
-import { GameAction, gameReducer } from './GameStateReducer';
+import { GameAction, gameReducer, GameStateReducer } from './GameStateReducer';
 import { PeerService } from '../services/PeerService';
 import { PeerMessageType, PeerServiceMessage } from '../types/peerMessages';
-
-// Initial empty game state
-const initialGameState: GameState = {
-  id: '',
-  displayName: 'New Game',
-  status: 'configuring',
-  players: {},
-  stashes: {},
-  transactions: [],
-  createdAt: Date.now(),
-  version: 0
-};
 
 // Create the context with initial undefined values
 const GameContext = createContext<{
@@ -32,10 +20,9 @@ interface GameProviderProps {
 
 export const GameProvider = ({ 
   children, 
-  initialState = initialGameState,
   peerService
 }: GameProviderProps) => {
-  const [state, dispatch] = useReducer(gameReducer, initialState);
+  const [state, dispatch] = useReducer(gameReducer, {} as GameState);
 
   // Subscribe to PeerService events
   useEffect(() => {
@@ -48,28 +35,20 @@ export const GameProvider = ({
       try {
         // Ignore messages from self
         if (peerId === peerService.getPeerId()) {
+          console.log('Received message from self, ignoring');
           return;
         }
         
         // Check if we're admin
-        const isAdmin = !!state.players[peerService.getPeerId() || '']?.isAdmin;
+        const isAdmin = state.id &&!!state.players[peerService.getPeerId() || '']?.isAdmin;
+        
         
         switch (message.type) {
           case PeerMessageType.STATE_SYNC:
+            console.log('Received state sync message');
             // Validate received state
             const receivedState = message.payload.gameState as GameState;
-            if (!receivedState || !receivedState.id) {
-              console.error('Invalid game state received:', receivedState);
-              return;
-            }
             
-            // Only accept states with higher or equal version
-            if (receivedState.version < state.version) {
-              console.warn('Received outdated game state. Current version:', state.version, 'Received version:', receivedState.version);
-              return;
-            }
-            
-            // Sync game state from admin
             dispatch({ 
               type: 'SYNC_STATE', 
               payload: receivedState
@@ -127,10 +106,8 @@ export const GameProvider = ({
       console.log('Peer connected:', remotePeerId);
       
       try {
-        // If we're the admin, add the player to game state and broadcast
         const isAdmin = !!state.players[peerService.getPeerId() || '']?.isAdmin;
         if (isAdmin) {
-          // First update the game state to add the new player
           dispatch({
             type: 'ADD_PLAYER',
             payload: {
@@ -168,6 +145,11 @@ export const GameProvider = ({
   // Broadcast state changes if we're the admin
   useEffect(() => {
     if (!peerService) return;
+
+    if (!state.id) {
+      console.log('Game state not initialized, skipping broadcast');
+      return;
+    }
     
     const isAdmin = !!state.players[peerService.getPeerId() || '']?.isAdmin;
     if (!isAdmin) return;

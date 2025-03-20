@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
 import { useGameContext } from '../contexts/GameContext';
-import { GameStateReducer } from '../contexts/GameStateReducer';
 import ConnectionStatus from '../components/common/ConnectionStatus';
-import { generateGameId } from '../utils';
 
 // Main component for the HomePage
 const HomePage: React.FC = () => {
@@ -50,27 +47,13 @@ const HomePage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // Initialize as a leader
-      await peerService.initConnection(true);
-      
       const peerId = peerService.getPeerId();
       if (!peerId) {
         throw new Error('Failed to get peer ID');
       }
       
-      // Create a new game state
-      const gameId = generateGameId();
-      const initialState = GameStateReducer.initGame(peerId, displayName);
-      
-      // Update the player name
-      const stateWithUpdatedPlayer = GameStateReducer.updatePlayer(
-        initialState,
-        peerId,
-        { name: displayName }
-      );
-      
       // Dispatch to sync the state
-      dispatch({ type: 'SYNC_STATE', payload: stateWithUpdatedPlayer });
+      dispatch({ type: 'INIT_GAME', payload: { peerId, playerName: displayName } });
       
       // Navigate to the lobby page
       navigate('/lobby');

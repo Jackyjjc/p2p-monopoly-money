@@ -33,19 +33,19 @@ describe('PeerService', () => {
   });
 
   it('should initialize successfully', async () => {
-    await peer1.initConnection(true); // Initialize as leader
+    await peer1.initConnection(); // Initialize as leader
     const peerId = peer1.getPeerId();
     expect(peerId).toBeTruthy();
   });
 
   it('should allow peer2 to connect to peer1', async () => {
     // Initialize peer1 as leader
-    await peer1.initConnection(true);
+    await peer1.initConnection();
     const peer1Id = peer1.getPeerId();
     expect(peer1Id).toBeTruthy();
 
     // Initialize peer2
-    await peer2.initConnection(false);
+    await peer2.initConnection();
     const peer2Id = peer2.getPeerId();
     expect(peer2Id).toBeTruthy();
 
@@ -68,11 +68,11 @@ describe('PeerService', () => {
     peer2.on('message', peer2MessageSpy);
 
     // Initialize and connect peers
-    await peer1.initConnection(true);
+    await peer1.initConnection();
     const peer1Id = peer1.getPeerId();
     console.log("peer1Id", peer1Id);
 
-    await peer2.initConnection(false);
+    await peer2.initConnection();
     const peer2Id = peer2.getPeerId();
     console.log("peer2Id", peer2Id);
     await peer2.connectToPeer(peer1Id!);
@@ -143,12 +143,12 @@ describe('PeerService', () => {
       peer3.on('message', peer3MessageSpy);
 
       // Initialize peer1 as leader
-      await peer1.initConnection(true);
+      await peer1.initConnection();
       const peer1Id = peer1.getPeerId();
       
       // Initialize peer2 and peer3
-      await peer2.initConnection(false);
-      await peer3.initConnection(false);
+      await peer2.initConnection();
+      await peer3.initConnection();
       
       // Connect peer2 and peer3 to peer1 (the leader)
       await peer2.connectToPeer(peer1Id!);
@@ -205,10 +205,10 @@ describe('PeerService', () => {
       peer2.on('peer:disconnect', peer2DisconnectSpy);
 
       // Initialize and connect peers
-      await peer1.initConnection(true);
+      await peer1.initConnection();
       const peer1Id = peer1.getPeerId();
       
-      await peer2.initConnection(false);
+      await peer2.initConnection();
       const peer2Id = peer2.getPeerId();
       
       await peer2.connectToPeer(peer1Id!);

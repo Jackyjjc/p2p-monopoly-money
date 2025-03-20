@@ -52,9 +52,9 @@
 ## 5. Create Core UI Pages & Components
 
 ### 5.1 HomePage
-- [ ] 5.1.1 Provide an input for the user's display name
-- [ ] 5.1.2 "Create Game" button: calls GameStateReducer.initGame(), sets local user as admin
-- [ ] 5.1.3 "Join Game" button: prompts for admin's peerId, calls PeerService.connectToPeer(...)
+- [x] 5.1.1 Provide an input for the user's display name
+- [x] 5.1.2 "Create Game" button: calls GameStateReducer.initGame(), sets local user as admin
+- [x] 5.1.3 "Join Game" button: prompts for admin's peerId, calls PeerService.connectToPeer(...)
 
 ### 5.2 LobbyPage
 - [ ] 5.2.1 Display list of players and stashes from the GameState

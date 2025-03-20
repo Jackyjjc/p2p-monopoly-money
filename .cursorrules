@@ -59,3 +59,16 @@ rule "Use reducer pattern for complex state" {
     message = "Consider using the useReducer hook instead of multiple useState calls for more predictable state management in complex components."
   }
 } 
+
+# Use dispatch for game state modifications
+rule "Use dispatch for game state modifications" {
+  match {
+    file = /\.(jsx|tsx|js|ts)$/
+    file_not = /GameStateReducer\.ts$/
+    content = /(setState\(.*game|\.status\s*=|\.players\s*=|\.stashes\s*=|\.transactions\s*=)/
+  }
+  
+  suggest {
+    message = "Frontend components should only use dispatch to modify the game state. Direct state mutations should only occur in GameStateReducer.ts."
+  }
+} 
