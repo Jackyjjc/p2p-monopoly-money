@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGameContext } from '../contexts/GameContext';
 import ConnectionStatus from '../components/common/ConnectionStatus';
 import PlayersList from '../components/PlayersList';
@@ -8,10 +9,18 @@ import styles from '../styles/LobbyPage.module.css';
 
 const LobbyPage: React.FC = () => {
   const { state, dispatch, peerService } = useGameContext();
+  const navigate = useNavigate();
 
   // Check if the current user is admin
   const currentPeerId = peerService?.getPeerId() || '';
   const isAdmin = state.players[currentPeerId]?.isAdmin || false;
+
+  // Navigate to game page when game status changes to 'active'
+  useEffect(() => {
+    if (state.status === 'active') {
+      navigate('/game');
+    }
+  }, [state.status, navigate]);
 
   // Handle adding a new stash
   const handleAddStash = (name: string, balance: number, isInfinite: boolean) => {
@@ -61,13 +70,9 @@ const LobbyPage: React.FC = () => {
           <button 
             className={styles['start-game-button']}
             onClick={handleStartGame}
-            disabled={Object.keys(state.stashes).length === 0}
           >
             Start Game
           </button>
-          {Object.keys(state.stashes).length === 0 && (
-            <p className={styles['start-game-hint']}>You need at least one stash to start the game.</p>
-          )}
         </div>
       )}
     </div>

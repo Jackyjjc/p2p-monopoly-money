@@ -57,9 +57,9 @@
 - [x] 5.1.3 "Join Game" button: prompts for admin's peerId, calls PeerService.connectToPeer(...)
 
 ### 5.2 LobbyPage
-- [ ] 5.2.1 Display list of players and stashes from the GameState
-- [ ] 5.2.2 If admin, allow adding stash: input fields for name/balance, "Add" button
-- [ ] 5.2.3 Provide "Start Game" button → dispatch START_GAME action
+- [x] 5.2.1 Display list of players and stashes from the GameState
+- [x] 5.2.2 If admin, allow adding stash: input fields for name/balance, "Add" button
+- [x] 5.2.3 Provide "Start Game" button → dispatch START_GAME action
 
 ### 5.3 GamePage
 - [ ] 5.3.1 Show a transaction "dashboard" of balances for all players and stashes

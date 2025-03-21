@@ -5,6 +5,7 @@ import { PeerService } from './services/PeerService';
 import HomePage from './pages/HomePage';
 import JoiningPage from './pages/JoiningPage';
 import LobbyPage from './pages/LobbyPage';
+import GamePage from './pages/GamePage';
 import './styles/main.css';
 
 const App: React.FC = () => {
@@ -28,8 +29,7 @@ const App: React.FC = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/joining" element={<JoiningPage />} />
           <Route path="/lobby" element={<LobbyPage />} />
-          {/* These routes will be implemented later */}
-          <Route path="/game" element={<div>Game Page - To be implemented</div>} />
+          <Route path="/game" element={<GamePage />} />
           <Route path="/game-ended" element={<div>Game Ended Page - To be implemented</div>} />
           {/* Redirect to home for any unknown routes */}
           <Route path="*" element={<Navigate to="/" replace />} />

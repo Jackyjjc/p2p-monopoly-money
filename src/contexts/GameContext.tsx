@@ -1,8 +1,10 @@
-import React, { createContext, useContext, useReducer, ReactNode, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect, useRef, useState } from 'react';
 import { GameState } from '../types';
 import { GameAction, gameReducer, GameStateReducer } from './GameStateReducer';
 import { PeerService } from '../services/PeerService';
-import { PeerMessageType, PeerServiceMessage } from '../types/peerMessages';
+import { PeerMessageType, PeerServiceMessage, ErrorMessage } from '../types/peerMessages';
+import { validateTransaction } from '../utils/transactionValidator';
+import { createErrorMessage } from '../utils/messageUtils';
 
 // Create the context with initial undefined values
 const GameContext = createContext<{
@@ -59,17 +61,34 @@ export const GameProvider = ({
           case PeerMessageType.TRANSACTION_REQUEST:
             // Add new transaction (only admin should process this)
             if (isAdmin) {
-              dispatch({
-                type: 'ADD_TRANSACTION',
-                payload: {
-                  id: message.payload.id,
-                  timestamp: message.payload.timestamp,
-                  senderId: message.payload.senderId,
-                  receiverId: message.payload.receiverId,
-                  amount: message.payload.amount,
-                  isDeleted: false
-                }
-              });
+              const transaction = {
+                id: message.payload.id,
+                timestamp: message.payload.timestamp,
+                senderId: message.payload.senderId,
+                receiverId: message.payload.receiverId,
+                amount: message.payload.amount,
+                isDeleted: false
+              };
+              
+              // Validate the transaction
+              const validation = validateTransaction(state, transaction);
+              
+              if (validation.isValid) {
+                // Transaction is valid, process it
+                dispatch({
+                  type: 'ADD_TRANSACTION',
+                  payload: transaction
+                });
+              } else {
+                // Transaction is invalid, send error back to peer
+                console.error('Invalid transaction request:', validation.errorMessage);
+                
+                // Send error message back to the peer who sent the transaction
+                peerService.sendToPeer(peerId, createErrorMessage(
+                  'INVALID_TRANSACTION', 
+                  validation.errorMessage
+                ));
+              }
               
               // After processing a transaction, we should broadcast updated state
               // This will happen in a useEffect that watches for state changes
