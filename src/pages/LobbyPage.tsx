@@ -5,6 +5,7 @@ import ConnectionStatus from '../components/common/ConnectionStatus';
 import PlayersList from '../components/PlayersList';
 import StashList from '../components/StashList';
 import StashForm from '../components/StashForm';
+import PlayerBalanceForm from '../components/PlayerBalanceForm';
 import styles from '../styles/LobbyPage.module.css';
 
 const LobbyPage: React.FC = () => {
@@ -34,6 +35,17 @@ const LobbyPage: React.FC = () => {
     });
   };
 
+  // Handle updating a player's balance
+  const handleUpdatePlayerBalance = (playerId: string, balance: number) => {
+    dispatch({
+      type: 'UPDATE_PLAYER_BALANCE',
+      payload: {
+        playerId,
+        balance
+      }
+    });
+  };
+
   // Handle starting the game
   const handleStartGame = () => {
     dispatch({
@@ -52,6 +64,15 @@ const LobbyPage: React.FC = () => {
         <section className={styles['player-section']}>
           <h2>Players</h2>
           <PlayersList players={state.players} currentPeerId={currentPeerId} />
+          
+          {/* Admin-only: Player Balance Form */}
+          {isAdmin && (
+            <PlayerBalanceForm 
+              players={state.players} 
+              onUpdateBalance={handleUpdatePlayerBalance} 
+              currentPeerId={currentPeerId}
+            />
+          )}
         </section>
 
         {/* Stashes Section */}

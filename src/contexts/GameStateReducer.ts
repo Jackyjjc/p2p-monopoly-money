@@ -21,6 +21,7 @@ export type GameAction =
   | { type: 'ADD_PLAYER'; payload: { playerId: string, playerName?: string } }
   | { type: 'REMOVE_PLAYER'; payload: { playerId: string } }
   | { type: 'UPDATE_PLAYER_NAME'; payload: { playerId: string, playerName: string } }
+  | { type: 'UPDATE_PLAYER_BALANCE'; payload: { playerId: string, balance: number } }
   | { type: 'ADD_STASH'; payload: { name: string, balance?: number, isInfinite?: boolean } }
   | { type: 'UPDATE_STASH'; payload: { stashId: string, updates: Partial<Stash> } };
 
@@ -421,61 +422,80 @@ export class GameStateReducer {
  * @returns Updated game state
  */
 export const gameReducer = (state: GameState, action: GameAction): GameState => {
-  switch (action.type) {
-    case 'INIT_GAME':
-      return GameStateReducer.initGame(
-        action.payload.peerId, 
-        action.payload.playerName
-      );
-
-    case 'START_GAME':
-      return GameStateReducer.startGame(state);
-
-    case 'ADD_TRANSACTION':
-      return GameStateReducer.processTransaction(state, action.payload);
-
-    case 'END_GAME':
-      return GameStateReducer.endGame(state);
-
-    case 'SYNC_STATE':
-      return GameStateReducer.syncState(state, action.payload);
+  try {
+    switch (action.type) {
+      case 'INIT_GAME':
+        return GameStateReducer.initGame(action.payload.peerId, action.payload.playerName);
       
-    case 'ADD_PLAYER':
-      return GameStateReducer.addPlayer(
-        state, 
-        action.payload.playerId, 
-        action.payload.playerName
-      );
+      case 'START_GAME':
+        return {
+          ...GameStateReducer.startGame(state),
+          startedAt: action.payload.startedAt
+        };
       
-    case 'REMOVE_PLAYER':
-      return GameStateReducer.removePlayer(
-        state,
-        action.payload.playerId
-      );
+      case 'END_GAME':
+        return {
+          ...GameStateReducer.endGame(state),
+          endedAt: action.payload.endedAt
+        };
       
-    case 'UPDATE_PLAYER_NAME':
-      return GameStateReducer.updatePlayer(
-        state,
-        action.payload.playerId,
-        { name: action.payload.playerName }
-      );
+      case 'SYNC_STATE':
+        return GameStateReducer.syncState(state, action.payload);
       
-    case 'ADD_STASH':
-      return GameStateReducer.addStash(
-        state,
-        action.payload.name,
-        action.payload.balance,
-        action.payload.isInfinite
-      );
+      case 'ADD_PLAYER':
+        return GameStateReducer.addPlayer(
+          state, 
+          action.payload.playerId, 
+          action.payload.playerName
+        );
       
-    case 'UPDATE_STASH':
-      return GameStateReducer.updateStash(
-        state,
-        action.payload.stashId,
-        action.payload.updates
-      );
-
-    default:
-      return state;
+      case 'REMOVE_PLAYER':
+        return GameStateReducer.removePlayer(
+          state,
+          action.payload.playerId
+        );
+      
+      case 'UPDATE_PLAYER_NAME':
+        return GameStateReducer.updatePlayer(
+          state,
+          action.payload.playerId,
+          { name: action.payload.playerName }
+        );
+      
+      case 'UPDATE_PLAYER_BALANCE':
+        return GameStateReducer.updatePlayer(
+          state,
+          action.payload.playerId,
+          { balance: action.payload.balance }
+        );
+        
+      case 'ADD_STASH':
+        return GameStateReducer.addStash(
+          state,
+          action.payload.name,
+          action.payload.balance,
+          action.payload.isInfinite
+        );
+      
+      case 'UPDATE_STASH':
+        return GameStateReducer.updateStash(
+          state,
+          action.payload.stashId,
+          action.payload.updates
+        );
+      
+      case 'ADD_TRANSACTION':
+        return GameStateReducer.processTransaction(
+          state,
+          action.payload
+        );
+      
+      default:
+        console.warn('Unknown action type:', (action as any).type);
+        return state;
+    }
+  } catch (error) {
+    console.error('Error processing action:', error, action);
+    return state;
   }
 }; 

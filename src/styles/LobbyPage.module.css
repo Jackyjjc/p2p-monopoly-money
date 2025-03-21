@@ -62,7 +62,8 @@
   margin-left: 0.5rem;
 }
 
-.add-stash-form {
+.add-stash-form,
+.player-balance-form {
   margin-top: 1.5rem;
   background: white;
   padding: 1.5rem;
@@ -81,7 +82,8 @@
 }
 
 .form-group input[type="text"],
-.form-group input[type="number"] {
+.form-group input[type="number"],
+.form-group select {
   width: 100%;
   padding: 0.75rem;
   border: 1px solid #ddd;
@@ -94,6 +96,7 @@
 }
 
 .add-stash-button,
+.update-balance-button,
 .start-game-button {
   background: #1976d2;
   color: white;
@@ -107,11 +110,13 @@
 }
 
 .add-stash-button:hover,
+.update-balance-button:hover,
 .start-game-button:hover {
   background: #1565c0;
 }
 
 .add-stash-button:disabled,
+.update-balance-button:disabled,
 .start-game-button:disabled {
   background: #b0b0b0;
   cursor: not-allowed;
