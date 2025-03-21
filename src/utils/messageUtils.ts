@@ -1,10 +1,19 @@
 /**
  * Utility functions for handling message serialization and deserialization
  */
-import { PeerMessageType, ErrorMessage, StateSyncMessage } from '../types/peerMessages';
+import { 
+  PeerMessageType, 
+  ErrorMessage, 
+  StateSyncMessage, 
+  TransactionRequestMessage, 
+  GameStartMessage, 
+  GameEndMessage, 
+  PlayerNameMessage
+} from '../types/peerMessages';
 
 /**
  * Creates an error message
+ * @param code Error code
  * @param message Error message
  * @returns Error message
  */
@@ -19,15 +28,83 @@ export function createErrorMessage(code: string, message: string): ErrorMessage 
 }
 
 /**
- * Creates a data message with the specified payload
- * @param payload The payload to send
- * @returns Data message
+ * Creates a state sync message with the game state
+ * @param gameState The game state to send
+ * @returns State sync message
  */
-export function createDataMessage(_targetPeerId: string, payload: any): StateSyncMessage {
+export function createStateSyncMessage(gameState: any): StateSyncMessage {
   return {
     type: PeerMessageType.STATE_SYNC,
     payload: {
-      gameState: payload
+      gameState
+    }
+  };
+}
+
+/**
+ * Creates a transaction request message
+ * @param id Transaction ID
+ * @param senderId Sender's ID
+ * @param receiverId Receiver's ID
+ * @param amount Transaction amount
+ * @returns Transaction request message
+ */
+export function createTransactionRequestMessage(
+  id: string, 
+  senderId: string, 
+  receiverId: string, 
+  amount: number
+): TransactionRequestMessage {
+  return {
+    type: PeerMessageType.TRANSACTION_REQUEST,
+    payload: {
+      id,
+      timestamp: Date.now(),
+      senderId,
+      receiverId,
+      amount
+    }
+  };
+}
+
+/**
+ * Creates a game start message
+ * @returns Game start message
+ */
+export function createGameStartMessage(): GameStartMessage {
+  return {
+    type: PeerMessageType.GAME_START,
+    payload: {
+      startedAt: Date.now()
+    }
+  };
+}
+
+/**
+ * Creates a game end message
+ * @returns Game end message
+ */
+export function createGameEndMessage(): GameEndMessage {
+  return {
+    type: PeerMessageType.GAME_END,
+    payload: {
+      endedAt: Date.now()
+    }
+  };
+}
+
+/**
+ * Creates a player name message
+ * @param playerId Player's ID
+ * @param playerName Player's name
+ * @returns Player name message
+ */
+export function createPlayerNameMessage(playerId: string, playerName: string): PlayerNameMessage {
+  return {
+    type: PeerMessageType.PLAYER_NAME,
+    payload: {
+      playerId,
+      playerName
     }
   };
 }
@@ -68,6 +145,8 @@ export function validateMessage(message: any): boolean {
       return !!message.payload?.startedAt;
     case PeerMessageType.GAME_END:
       return !!message.payload?.endedAt;
+    case PeerMessageType.PLAYER_NAME:
+      return !!message.payload?.playerId && !!message.payload?.playerName;
     default:
       return false;
   }

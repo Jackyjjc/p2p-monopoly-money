@@ -6,6 +6,7 @@ export enum PeerMessageType {
     STATE_SYNC = 'state',                        // Admin broadcasts updated game state
     GAME_START = 'game-start',                   // Admin broadcasts game start
     GAME_END = 'game-end',                       // Admin broadcasts game end
+    PLAYER_NAME = 'player-name',                 // Player sends their name to admin after connecting
     ERROR = 'error'                              // Error message
 }
 
@@ -77,6 +78,17 @@ export interface ErrorMessage extends PeerMessage {
 }
 
 /**
+ * Player name message sent from player to admin after connection
+ */
+export interface PlayerNameMessage extends PeerMessage {
+    type: PeerMessageType.PLAYER_NAME;
+    payload: {
+        playerId: string;
+        playerName: string;
+    };
+}
+
+/**
  * Union type of all peer message types
  */
 export type PeerServiceMessage =
@@ -84,4 +96,5 @@ export type PeerServiceMessage =
     | StateSyncMessage
     | GameStartMessage
     | GameEndMessage
+    | PlayerNameMessage
     | ErrorMessage;

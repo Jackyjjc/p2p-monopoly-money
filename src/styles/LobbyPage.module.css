@@ -52,6 +52,16 @@
   font-weight: bold;
 }
 
+.you-badge {
+  background: #2e7d32;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-left: 0.5rem;
+}
+
 .add-stash-form {
   margin-top: 1.5rem;
   background: white;

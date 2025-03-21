@@ -42,7 +42,7 @@ const LobbyPage: React.FC = () => {
         {/* Players Section */}
         <section className={styles['player-section']}>
           <h2>Players</h2>
-          <PlayersList players={state.players} />
+          <PlayersList players={state.players} currentPeerId={currentPeerId} />
         </section>
 
         {/* Stashes Section */}

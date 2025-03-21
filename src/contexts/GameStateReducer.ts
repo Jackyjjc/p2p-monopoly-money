@@ -19,6 +19,8 @@ export type GameAction =
   | { type: 'END_GAME'; payload: { endedAt: number } }
   | { type: 'SYNC_STATE'; payload: GameState }
   | { type: 'ADD_PLAYER'; payload: { playerId: string, playerName?: string } }
+  | { type: 'REMOVE_PLAYER'; payload: { playerId: string } }
+  | { type: 'UPDATE_PLAYER_NAME'; payload: { playerId: string, playerName: string } }
   | { type: 'ADD_STASH'; payload: { name: string, balance?: number, isInfinite?: boolean } }
   | { type: 'UPDATE_STASH'; payload: { stashId: string, updates: Partial<Stash> } };
 
@@ -377,6 +379,39 @@ export class GameStateReducer {
   private static isInfiniteStash(state: GameState, id: string): boolean {
     return state.stashes[id]?.isInfinite || false;
   }
+
+  /**
+   * Remove a player from the game state
+   * @param state Current game state
+   * @param playerId Peer ID of the player to remove
+   * @returns Updated game state without the player
+   */
+  public static removePlayer(state: GameState, playerId: string): GameState {
+    // Check if the player exists
+    if (!state.players[playerId]) {
+      return state;
+    }
+    
+    // Check if the game has already started
+    if (this.hasGameStarted(state)) {
+      throw new Error('Cannot remove players after the game has started.');
+    }
+    
+    // Check if the player is admin
+    if (state.players[playerId].isAdmin) {
+      throw new Error('Cannot remove admin player from the game.');
+    }
+    
+    // Create a new players object without the specified player
+    const { [playerId]: removedPlayer, ...remainingPlayers } = state.players;
+    
+    // Return updated state
+    return {
+      ...state,
+      players: remainingPlayers,
+      version: state.version + 1
+    };
+  }
 }
 
 /**
@@ -388,7 +423,10 @@ export class GameStateReducer {
 export const gameReducer = (state: GameState, action: GameAction): GameState => {
   switch (action.type) {
     case 'INIT_GAME':
-      return GameStateReducer.initGame(action.payload.peerId, action.payload.playerName);
+      return GameStateReducer.initGame(
+        action.payload.peerId, 
+        action.payload.playerName
+      );
 
     case 'START_GAME':
       return GameStateReducer.startGame(state);
@@ -407,6 +445,19 @@ export const gameReducer = (state: GameState, action: GameAction): GameState => 
         state, 
         action.payload.playerId, 
         action.payload.playerName
+      );
+      
+    case 'REMOVE_PLAYER':
+      return GameStateReducer.removePlayer(
+        state,
+        action.payload.playerId
+      );
+      
+    case 'UPDATE_PLAYER_NAME':
+      return GameStateReducer.updatePlayer(
+        state,
+        action.payload.playerId,
+        { name: action.payload.playerName }
       );
       
     case 'ADD_STASH':

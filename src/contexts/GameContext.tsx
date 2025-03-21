@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect, useRef } from 'react';
 import { GameState } from '../types';
 import { GameAction, gameReducer, GameStateReducer } from './GameStateReducer';
 import { PeerService } from '../services/PeerService';
@@ -23,6 +23,7 @@ export const GameProvider = ({
   peerService
 }: GameProviderProps) => {
   const [state, dispatch] = useReducer(gameReducer, {} as GameState);
+  const prevPlayerNameRef = useRef<string | null>(null);
 
   // Subscribe to PeerService events
   useEffect(() => {
@@ -72,6 +73,23 @@ export const GameProvider = ({
               
               // After processing a transaction, we should broadcast updated state
               // This will happen in a useEffect that watches for state changes
+            }
+            break;
+          
+          case PeerMessageType.PLAYER_NAME:
+            // Update player name (only admin should process this)
+            console.log('Received player name update from peer', message.payload.playerId, message.payload.playerName);
+            if (isAdmin) {
+              console.log('Updating player name in state');
+              dispatch({
+                type: 'UPDATE_PLAYER_NAME',
+                payload: {
+                  playerId: message.payload.playerId,
+                  playerName: message.payload.playerName
+                }
+              });
+              
+              // State will be broadcast automatically after update
             }
             break;
           
@@ -126,7 +144,25 @@ export const GameProvider = ({
     // Handle peer disconnections
     const handlePeerDisconnect = (remotePeerId: string) => {
       console.log('Peer disconnected:', remotePeerId);
-      // Additional disconnect handling could be added here
+      
+      try {
+        const isAdmin = !!state.players[peerService.getPeerId() || '']?.isAdmin;
+        // Only admin should remove players from the state
+        if (isAdmin && state.status === 'configuring') {
+          // Check if the disconnected peer is in the player list and is not admin
+          const disconnectedPlayer = state.players[remotePeerId];
+          if (disconnectedPlayer && !disconnectedPlayer.isAdmin) {
+            dispatch({
+              type: 'REMOVE_PLAYER',
+              payload: {
+                playerId: remotePeerId
+              }
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error handling peer disconnection:', error);
+      }
     };
 
     // Listen for events
@@ -170,6 +206,52 @@ export const GameProvider = ({
       console.error('Error broadcasting game state:', error);
     }
   }, [peerService, state]);
+
+  // Send player name update to admin when non-admin player changes their name
+  useEffect(() => {
+    if (!peerService || !state.id) return;
+
+    const currentPeerId = peerService.getPeerId();
+    if (!currentPeerId || !state.players[currentPeerId]) return;
+
+    const currentPlayer = state.players[currentPeerId];
+    const currentPlayerName = currentPlayer.name;
+    
+    // Skip if the current player is the admin
+    if (currentPlayer.isAdmin) {
+      prevPlayerNameRef.current = currentPlayerName;
+      return;
+    }
+
+    // Check if name has changed
+    if (prevPlayerNameRef.current === currentPlayerName) {
+      return;
+    }
+
+    // Find admin peer ID
+    const adminPeerId = Object.keys(state.players).find(id => state.players[id].isAdmin);
+    if (!adminPeerId) {
+      prevPlayerNameRef.current = currentPlayerName;
+      return;
+    }
+
+    // Send player name update to admin
+    try {
+      console.log('Sending player name update to admin:', currentPlayerName);
+      peerService.sendToPeer(adminPeerId, {
+        type: PeerMessageType.PLAYER_NAME,
+        payload: {
+          playerId: currentPeerId,
+          playerName: currentPlayerName
+        }
+      } as PeerServiceMessage);
+      
+      // Update ref after successful send
+      prevPlayerNameRef.current = currentPlayerName;
+    } catch (error) {
+      console.error('Error sending player name update:', error);
+    }
+  }, [peerService, state.id, state.players]);
 
   return (
     <GameContext.Provider value={{ state, dispatch, peerService }}>
