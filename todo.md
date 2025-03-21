@@ -62,13 +62,13 @@
 - [x] 5.2.3 Provide "Start Game" button → dispatch START_GAME action
 
 ### 5.3 GamePage
-- [ ] 5.3.1 Show a transaction "dashboard" of balances for all players and stashes
-- [ ] 5.3.2 "New Transaction" button → open a modal with fields for sender, receiver, amount
-- [ ] 5.3.3 On confirm, dispatch ADD_TRANSACTION action which handles admin vs. non-admin flows
+- [x] 5.3.1 Show a transaction "dashboard" of balances for all players and stashes
+- [x] 5.3.2 "New Transaction" button → open a modal with fields for sender, receiver, amount
+- [x] 5.3.3 On confirm, dispatch ADD_TRANSACTION action which handles admin vs. non-admin flows
 
 ### 5.4 GameEndedPage
-- [ ] 5.4.1 Render final balances (or just show the read-only version of GameState)
-- [ ] 5.4.2 "Return to Home" → user resets or navigates to main
+- [x] 5.4.1 Render final balances (or just show the read-only version of GameState)
+- [x] 5.4.2 "Return to Home" → user resets or navigates to main
 
 ## 6. Finalize Testing & Deployment
 
@@ -79,4 +79,21 @@
 ### 6.2 Integration Tests & Deployment
 - [ ] 6.2.1 Optional: write an E2E test with something like Cypress or Playwright
 - [ ] 6.2.2 Confirm final npm run build produces /dist
-- [ ] 6.2.3 Deploy the bundle to a static host (e.g., Vercel, Netlify) 
+- [ ] 6.2.3 Deploy the bundle to a static host (e.g., Vercel, Netlify)
+
+## 7. Enhancements and Bug Fixes
+
+### 7.1 Local Storage Implementation
+- [ ] 7.1.1 Add a utility service for saving/loading game state from localStorage
+- [ ] 7.1.2 Implement versioning to avoid conflicts with newer states from admin
+- [ ] 7.1.3 Add "Resume Game" option to HomePage for locally saved games
+
+### 7.2 User Experience Improvements
+- [ ] 7.2.1 Add transaction history filtering and sorting options
+- [ ] 7.2.2 Implement confirmation modals for critical actions (end game, delete transaction)
+- [ ] 7.2.3 Add visual feedback for transaction success/failure states
+
+### 7.3 Advanced Features
+- [ ] 7.3.1 Implement transaction categories or tags
+- [ ] 7.3.2 Add export functionality for game history (CSV, JSON)
+- [ ] 7.3.3 Enable transaction attachment messages or notes 
