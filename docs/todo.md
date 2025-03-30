@@ -23,6 +23,7 @@
 - [x] 2.2.1 Implement connectToPeer(remotePeerId) that returns a Promise resolved on "open"
 - [x] 2.2.2 Add broadcast(message) that loops over all connected peers and sends the message
 - [x] 2.2.3 Emit an 'message' event whenever a connected peer sends data
+- [x] 2.2.4 Add URL-safe peer ID encoding/decoding for game sharing
 
 ## 3. Implement Game Logic (GameStateReducer & GameContext)
 
@@ -54,32 +55,35 @@
 ### 5.1 HomePage
 - [x] 5.1.1 Provide an input for the user's display name
 - [x] 5.1.2 "Create Game" button: calls GameStateReducer.initGame(), sets local user as admin
-- [x] 5.1.3 "Join Game" button: prompts for admin's peerId, calls PeerService.connectToPeer(...)
+- [x] 5.1.3 Generate and display shareable game URL with admin's peer ID (base64 encoded)
 
-### 5.2 LobbyPage
-- [x] 5.2.1 Display list of players and stashes from the GameState
-- [x] 5.2.2 If admin, allow adding stash: input fields for name/balance, "Add" button
-- [x] 5.2.3 Provide "Start Game" button → dispatch START_GAME action
+### 5.2 JoiningPage
+- [x] 5.2.1 Extract and decode admin's peer ID from URL parameters
+- [x] 5.2.2 Initialize PeerService connection
+- [x] 5.2.3 Handle player name input and connection to admin
+- [x] 5.2.4 Auto-navigate based on game status
 
-### 5.3 GamePage
-- [x] 5.3.1 Show a transaction "dashboard" of balances for all players and stashes
-- [x] 5.3.2 "New Transaction" button → open a modal with fields for sender, receiver, amount
-- [x] 5.3.3 On confirm, dispatch ADD_TRANSACTION action which handles admin vs. non-admin flows
+### 5.3 LobbyPage
+- [x] 5.3.1 Display list of players and stashes from the GameState
+- [x] 5.3.2 If admin, allow adding stash: input fields for name/balance, "Add" button
+- [x] 5.3.3 Provide "Start Game" button → dispatch START_GAME action
+- [x] 5.3.4 Display and allow copying of game URL for sharing (with encoded peer ID)
 
-### 5.4 GameEndedPage
-- [x] 5.4.1 Render final balances (or just show the read-only version of GameState)
-- [x] 5.4.2 "Return to Home" → user resets or navigates to main
+### 5.4 GamePage
+- [x] 5.4.1 Show a transaction "dashboard" of balances for all players and stashes
+- [x] 5.4.2 "New Transaction" button → open a modal with fields for sender, receiver, amount
+- [x] 5.4.3 On confirm, dispatch ADD_TRANSACTION action which handles admin vs. non-admin flows
+
+### 5.5 GameEndedPage
+- [x] 5.5.1 Render final balances (or just show the read-only version of GameState)
+- [x] 5.5.2 "Return to Home" → user resets or navigates to main
 
 ## 6. Finalize Testing & Deployment
 
 ### 6.1 Unit Tests
 - [ ] 6.1.1 For PeerService, mock PeerJS or use a test harness to connect two peers
 - [ ] 6.1.2 For GameStateReducer, test pure functions for adding stashes, players, transactions
-
-### 6.2 Integration Tests & Deployment
-- [ ] 6.2.1 Optional: write an E2E test with something like Cypress or Playwright
-- [ ] 6.2.2 Confirm final npm run build produces /dist
-- [ ] 6.2.3 Deploy the bundle to a static host (e.g., Vercel, Netlify)
+- [ ] 6.1.3 Test URL-safe peer ID encoding/decoding functionality
 
 ## 7. Enhancements and Bug Fixes
 
@@ -92,6 +96,9 @@
 - [ ] 7.2.1 Add transaction history filtering and sorting options
 - [ ] 7.2.2 Implement confirmation modals for critical actions (end game, delete transaction)
 - [ ] 7.2.3 Add visual feedback for transaction success/failure states
+- [x] 7.2.4 Add QR code generation for game URL sharing
+- [x] 7.2.5 Add URL-safe peer ID encoding for game sharing
+- [ ] 7.2.6 Add loading states for peer connection process
 
 ### 7.3 Advanced Features
 - [ ] 7.3.1 Implement transaction categories or tags

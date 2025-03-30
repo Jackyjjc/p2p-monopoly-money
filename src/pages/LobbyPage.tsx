@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import { useGameContext } from '../contexts/GameContext';
 import ConnectionStatus from '../components/common/ConnectionStatus';
 import PlayersList from '../components/PlayersList';
@@ -11,10 +12,26 @@ import styles from '../styles/LobbyPage.module.css';
 const LobbyPage: React.FC = () => {
   const { state, dispatch, peerService } = useGameContext();
   const navigate = useNavigate();
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
 
   // Check if the current user is admin
   const currentPeerId = peerService?.getPeerId() || '';
   const isAdmin = state.players[currentPeerId]?.isAdmin || false;
+
+  // Get the game URL
+  const gameUrl = `${window.location.origin}/joining?adminPeerId=${btoa(currentPeerId)}`;
+
+  // Handle copying the URL
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(gameUrl);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy URL:', err);
+    }
+  };
 
   // Navigate to game page when game status changes to 'active'
   useEffect(() => {
@@ -58,6 +75,38 @@ const LobbyPage: React.FC = () => {
     <div className={styles['lobby-page']}>
       <h1>Game Lobby: {state.displayName}</h1>
       <ConnectionStatus />
+
+      {/* Game URL Section */}
+      <section className={styles['url-section']}>
+        <h2>Game URL</h2>
+        <div className={styles['url-container']}>
+          <input 
+            type="text" 
+            value={gameUrl} 
+            readOnly 
+            className={styles['url-input']}
+          />
+          <div className={styles['button-group']}>
+            <button 
+              onClick={handleCopyUrl}
+              className={styles['copy-button']}
+            >
+              {copySuccess ? 'Copied!' : 'Copy URL'}
+            </button>
+            <button 
+              onClick={() => setShowQRCode(!showQRCode)}
+              className={styles['qr-button']}
+            >
+              {showQRCode ? 'Hide QR' : 'Show QR'}
+            </button>
+          </div>
+        </div>
+        {showQRCode && (
+          <div className={styles['qr-container']}>
+            <QRCodeSVG value={gameUrl} size={200} />
+          </div>
+        )}
+      </section>
 
       <div className={styles['lobby-sections']}>
         {/* Players Section */}

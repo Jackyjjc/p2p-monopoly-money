@@ -24,6 +24,8 @@ export interface Player {
 }
 ```
 
+Note: The `peerId` is automatically encoded using base64 when used in URLs for safe sharing.
+
 ### 1.2 `Stash`
 
 ```ts
@@ -426,9 +428,11 @@ The `GameProvider` component:
 
 1. **Player Input → UI Interaction**
    - User interacts with the UI to perform an action (e.g., send money)
+   - When sharing game URL, peer IDs are automatically base64 encoded
 
 2. **UI Component → GameContext Dispatch**
    - Component calls dispatch with appropriate action
+   - When joining a game, the encoded peer ID is automatically decoded
 
 3. **GameContext → Message Logic**
    - For admin: directly processes the action

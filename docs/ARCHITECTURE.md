@@ -16,6 +16,7 @@ This document outlines the architecture for the **P2P Money Tracker** applicatio
 - **Real-time transaction processing**: Transactions are sent, validated, and broadcast immediately.
 - **Local data persistence**: Game state is persisted in each client's local storage for continuity.
 - **Transaction validation**: Ensures data integrity and consistent game balances.
+- **URL-safe peer IDs**: Peer IDs are automatically encoded using base64 for safe URL sharing.
 
 ---
 
@@ -170,11 +171,24 @@ The context also handles broadcasting state changes from the admin to all connec
 ### 5.1 Home Page (`HomePage.tsx`)
 1. **PeerService Initialization**: User initializes PeerJS and gets a peer ID
 2. **User Details**: User enters their display name
-3. **Create or Join**:
-   - **Create Game**: Initializes GameState as admin, generates a shareable code
-   - **Join Game**: Enters admin's peer ID to connect to an existing game
+3. **Create Game**:
+   - Initializes GameState as admin
+   - Generates a shareable game URL containing the admin's peer ID (base64 encoded)
+   - Provides options to copy URL or display QR code for mobile sharing
+   - Navigates to the lobby page
 
-### 5.2 Lobby (`LobbyPage.tsx`)
+### 5.2 Joining Page (`JoiningPage.tsx`)
+1. **URL Processing**: 
+   - Extracts admin's peer ID from the game URL
+   - Decodes the base64-encoded peer ID
+2. **PeerService Initialization**: Sets up WebRTC connection
+3. **User Details**: User enters their display name
+4. **Connection Flow**:
+   - Connects to admin's peer
+   - Updates player name in game state
+   - Automatically navigates to appropriate page based on game status
+
+### 5.3 Lobby (`LobbyPage.tsx`)
 1. **Admin capabilities**:
    - Add/edit stashes with names, balances, and infinite flag
    - See connected players and their information
@@ -184,7 +198,7 @@ The context also handles broadcasting state changes from the admin to all connec
    - See other connected players
    - Wait for admin to start the game
 
-### 5.3 Active Game (`GamePage.tsx`)
+### 5.4 Active Game (`GamePage.tsx`)
 1. **Balance Overview**: Shows current balances for all players and stashes
 2. **Transaction creation**:
    - Player selects sender (self or stash)
@@ -197,7 +211,7 @@ The context also handles broadcasting state changes from the admin to all connec
    - Broadcasts updated state to all players
 4. **Transaction history**: Shows a chronological list of all transactions
 
-### 5.4 Ending the Game
+### 5.5 Ending the Game
 1. **Admin ends the game**: Changes status to "ended"
 2. **Final state**: All players can see final balances and transaction history
 3. **Game over**: No new transactions can be processed
@@ -269,7 +283,7 @@ enum PeerMessageType {
 ### 8.1 Pages
 1. **HomePage**: Entry point for creating/joining games
 2. **JoiningPage**: Connection handling when joining existing games
-3. **LobbyPage**: Game configuration before starting
+3. **LobbyPage**: Game configuration before starting, including URL sharing via copy link and QR code
 4. **GamePage**: Active gameplay with transaction management
 
 ### 8.2 Key Components
@@ -277,6 +291,7 @@ enum PeerMessageType {
 - **Transaction form**: Interface for creating new transactions
 - **Transaction history**: Chronological list of all transactions
 - **Peer status indicator**: Shows connection status for all players
+- **URL sharing**: Copy link and QR code generation for easy game sharing
 
 ---
 
