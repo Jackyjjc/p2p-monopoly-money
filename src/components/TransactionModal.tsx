@@ -100,20 +100,24 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
               <option value="">Select sender</option>
               {/* Players options */}
               <optgroup label="Players">
-                {Object.values(players).map(player => (
-                  <option key={player.peerId} value={player.peerId}>
-                    {player.name} (Balance: {player.balance})
-                  </option>
-                ))}
+                {Object.values(players)
+                  .filter(player => player.peerId !== receiverId)
+                  .map(player => (
+                    <option key={player.peerId} value={player.peerId}>
+                      {player.name} (Balance: {player.balance})
+                    </option>
+                  ))}
               </optgroup>
               
               {/* Stashes options */}
               <optgroup label="Stashes">
-                {Object.values(stashes).map(stash => (
-                  <option key={stash.id} value={stash.id}>
-                    {stash.name} ({stash.isInfinite ? '∞' : `Balance: ${stash.balance}`})
-                  </option>
-                ))}
+                {Object.values(stashes)
+                  .filter(stash => stash.id !== receiverId)
+                  .map(stash => (
+                    <option key={stash.id} value={stash.id}>
+                      {stash.name} ({stash.isInfinite ? '∞' : `Balance: ${stash.balance}`})
+                    </option>
+                  ))}
               </optgroup>
             </select>
           </div>
@@ -141,20 +145,24 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
               <option value="">Select receiver</option>
               {/* Players options */}
               <optgroup label="Players">
-                {Object.values(players).map(player => (
-                  <option key={player.peerId} value={player.peerId}>
-                    {player.name} (Balance: {player.balance})
-                  </option>
-                ))}
+                {Object.values(players)
+                  .filter(player => player.peerId !== senderId)
+                  .map(player => (
+                    <option key={player.peerId} value={player.peerId}>
+                      {player.name} (Balance: {player.balance})
+                    </option>
+                  ))}
               </optgroup>
               
               {/* Stashes options */}
               <optgroup label="Stashes">
-                {Object.values(stashes).map(stash => (
-                  <option key={stash.id} value={stash.id}>
-                    {stash.name} ({stash.isInfinite ? '∞' : `Balance: ${stash.balance}`})
-                  </option>
-                ))}
+                {Object.values(stashes)
+                  .filter(stash => stash.id !== senderId)
+                  .map(stash => (
+                    <option key={stash.id} value={stash.id}>
+                      {stash.name} ({stash.isInfinite ? '∞' : `Balance: ${stash.balance}`})
+                    </option>
+                  ))}
               </optgroup>
             </select>
           </div>
