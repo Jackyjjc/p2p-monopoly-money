@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGameContext } from '../contexts/GameContext';
 import ConnectionStatus from '../components/common/ConnectionStatus';
+import { usePeerConnection } from '../hooks/usePeerConnection';
 
 const JoiningPage: React.FC = () => {
   const { state, dispatch, peerService } = useGameContext();
@@ -11,36 +12,16 @@ const JoiningPage: React.FC = () => {
   const adminPeerId = encodedAdminPeerId ? atob(encodedAdminPeerId) : null;
   const [playerName, setPlayerName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
   const [hasAttemptedJoin, setHasAttemptedJoin] = useState(false);
   
-  // Initialize peer service when component mounts
+  const { connectionStatus, error, setError } = usePeerConnection(peerService);
+  
+  // Validate admin peer ID
   useEffect(() => {
-    const initializePeerService = async () => {
-      if (!adminPeerId) {
-        setError('Invalid game link. Please check the URL and try again.');
-        return;
-      }
-
-      if (!peerService) {
-        setConnectionStatus('connecting');
-        return;
-      }
-
-      try {
-        setConnectionStatus('connecting');
-        await peerService.initConnection();
-        setConnectionStatus('connected');
-      } catch (error) {
-        console.error('Failed to initialize connection:', error);
-        setConnectionStatus('error');
-        setError('Failed to initialize connection. Please try again.');
-      }
-    };
-
-    initializePeerService();
-  }, [adminPeerId, peerService]);
+    if (!adminPeerId) {
+      setError('Invalid game link. Please check the URL and try again.');
+    }
+  }, [adminPeerId, setError]);
 
   // Handle game state updates and navigation
   useEffect(() => {

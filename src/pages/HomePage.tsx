@@ -2,35 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameContext } from '../contexts/GameContext';
 import ConnectionStatus from '../components/common/ConnectionStatus';
+import { usePeerConnection } from '../hooks/usePeerConnection';
 
 // Main component for the HomePage
 const HomePage: React.FC = () => {
   const [createGameName, setCreateGameName] = useState('');
-  const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   
   const { dispatch, peerService } = useGameContext();
+  const { connectionStatus, error, setError } = usePeerConnection(peerService);
   const navigate = useNavigate();
-
-  // Initialize PeerService on component mount
-  useEffect(() => {
-    const initializePeer = async () => {
-      if (!peerService) return;
-      
-      try {
-        setConnectionStatus('connecting');
-        await peerService.initConnection();
-        setConnectionStatus('connected');
-      } catch (error) {
-        console.error('Failed to initialize peer:', error);
-        setConnectionStatus('error');
-        setError('Failed to connect to the signaling server. Please try again.');
-      }
-    };
-
-    initializePeer();
-  }, [peerService]);
 
   // Create a new game and become the admin
   const handleCreateGame = async () => {

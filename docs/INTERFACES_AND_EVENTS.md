@@ -292,7 +292,56 @@ PeerService emits the following events:
 
 The game state management has been implemented using a combination of React Context API for state distribution and a pure functional reducer for state transformations.
 
-### 4.1 GameStateReducer
+### 4.1 Custom Hooks
+
+#### `usePeerConnection`
+
+A custom hook that handles PeerService initialization and connection status management:
+
+```ts
+export const usePeerConnection = (peerService: PeerService | undefined) => {
+  const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const initializePeer = async () => {
+      if (!peerService) return;
+      
+      try {
+        setConnectionStatus('connecting');
+        await peerService.initConnection();
+        setConnectionStatus('connected');
+      } catch (error) {
+        console.error('Failed to initialize peer:', error);
+        setConnectionStatus('error');
+        setError('Failed to connect to the signaling server. Please try again.');
+      }
+    };
+
+    initializePeer();
+  }, [peerService]);
+
+  return { connectionStatus, error, setError };
+};
+```
+
+Usage in components:
+```tsx
+const { connectionStatus, error, setError } = usePeerConnection(peerService);
+
+// Access connection status
+if (connectionStatus === 'connected') {
+  // Peer is connected to signaling server and ready
+}
+
+// Display error messages
+{error && <div className="error-message">{error}</div>}
+
+// Set errors manually if needed
+setError('Custom error message');
+```
+
+### 4.2 GameStateReducer
 
 `GameStateReducer` is a collection of pure functional methods that transform the game state based on actions.
 

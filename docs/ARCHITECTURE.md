@@ -42,6 +42,7 @@ P2P Money Tracker uses a **React** application (TypeScript-based) structured int
     GameContext.tsx  # Main game state context with useReducer
     GameStateReducer.ts # Pure functions for state transformations
   /hooks             # Custom React hooks
+    usePeerConnection.ts  # Hook for peer connection initialization
   /pages             # Page-level components
     HomePage.tsx     # Entry point for users to create/join games
     LobbyPage.tsx    # Game configuration before starting
@@ -134,7 +135,22 @@ sendToPeer(peerId, message)             // Send to specific peer
 getPeers(): string[]                    // Get all connected peer IDs
 ```
 
-### 4.2 `GameContext` and `GameStateReducer`
+### 4.2 `usePeerConnection` Hook
+**Implementation**: `src/hooks/usePeerConnection.ts`
+
+This custom React hook encapsulates the peer connection initialization logic:
+
+- **Abstraction**: Provides a simple interface for components to initialize peer connections
+- **State management**: Tracks connection status and error messages
+- **Reusability**: Used across multiple components that need peer connectivity
+- **Error handling**: Properly captures and surfaces connection errors
+
+Key features:
+```ts
+const { connectionStatus, error, setError } = usePeerConnection(peerService);
+```
+
+### 4.3 `GameContext` and `GameStateReducer`
 **Implementation**: 
 - `src/contexts/GameContext.tsx`  
 - `src/contexts/GameStateReducer.ts`
@@ -169,7 +185,9 @@ The context also handles broadcasting state changes from the admin to all connec
 ## 5. Application Flow
 
 ### 5.1 Home Page (`HomePage.tsx`)
-1. **PeerService Initialization**: User initializes PeerJS and gets a peer ID
+1. **PeerService Initialization**: 
+   - Uses the `usePeerConnection` hook to initialize PeerJS
+   - Automatically manages connection status and errors
 2. **User Details**: User enters their display name
 3. **Create Game**:
    - Initializes GameState as admin
@@ -181,7 +199,9 @@ The context also handles broadcasting state changes from the admin to all connec
 1. **URL Processing**: 
    - Extracts admin's peer ID from the game URL
    - Decodes the base64-encoded peer ID
-2. **PeerService Initialization**: Sets up WebRTC connection
+2. **PeerService Initialization**: 
+   - Uses the `usePeerConnection` hook to establish WebRTC connection
+   - Automatically manages connection status and errors
 3. **User Details**: User enters their display name
 4. **Connection Flow**:
    - Connects to admin's peer

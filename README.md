@@ -74,6 +74,7 @@ npm start
 The application follows a component-based architecture with clear separation of concerns:
 
 - **PeerService**: Handles all WebRTC communication
+- **Custom Hooks**: Encapsulate and abstract complex logic like peer connection initialization
 - **GameStateReducer**: Contains pure business logic for state transformations
 - **GameContext**: Connects the UI with state management and peer communication
 - **React Components**: Provide the user interface layer
