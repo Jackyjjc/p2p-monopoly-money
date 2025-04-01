@@ -30,9 +30,10 @@ export class PeerService extends EventEmitter {
 
   /**
    * Initialize the PeerJS instance, set up event listeners and connect to the signal server.
+   * @param existingPeerId Optional peer ID to reuse from a previous session
    * @returns Promise that resolves when the peer is connected to the signal server and has a peer ID.
    */
-  public async initConnection(): Promise<string> {
+  public async initConnection(existingPeerId?: string): Promise<string> {
     console.log('PeerService initialize is called');
 
     if (this.initialized) {
@@ -43,19 +44,28 @@ export class PeerService extends EventEmitter {
       throw new Error('Peer is initialized but has no ID');
     } 
 
+    console.log('Creating new Peer instance');
+
     this.initialized = true;
     
-    // Create a new Peer instance with a random ID
-    // TODO: use a custom ID if we had a game in progress and we disconnected.
-    this.peer = new Peer({
+    // Common configuration for all peer connections
+    const peerConfig = {
       config: {
-        // TODO: add TURN server for NAT traversal
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:global.stun.twilio.com:3478' }
         ]
       }
-    });
+    };
+
+    // Create a new Peer instance with proper constructor based on whether ID exists
+    if (existingPeerId) {
+      // Use existing ID constructor
+      this.peer = new Peer(existingPeerId, peerConfig);
+    } else {
+      // Generate new ID constructor
+      this.peer = new Peer(peerConfig);
+    }
 
     this.setupEventListeners();
     

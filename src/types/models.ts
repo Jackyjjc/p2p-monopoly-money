@@ -14,6 +14,8 @@ export interface Player {
   balance: number;
   /** Indicates if this player is the admin/leader */
   isAdmin: boolean;
+  /** Indicates if this player is currently connected */
+  isConnected: boolean;
 }
 
 /**

@@ -15,13 +15,6 @@ const JoiningPage: React.FC = () => {
   const [hasAttemptedJoin, setHasAttemptedJoin] = useState(false);
   
   const { connectionStatus, error, setError } = usePeerConnection(peerService);
-  
-  // Validate admin peer ID
-  useEffect(() => {
-    if (!adminPeerId) {
-      setError('Invalid game link. Please check the URL and try again.');
-    }
-  }, [adminPeerId, setError]);
 
   // Handle game state updates and navigation
   useEffect(() => {

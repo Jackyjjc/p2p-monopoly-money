@@ -29,7 +29,19 @@ export const GameProvider = ({
 
   // Subscribe to PeerService events
   useEffect(() => {
+    console.log('Subscribing to PeerService events when peerService or state changes.');
     if (!peerService) return;
+
+    // Set current user as connected whenever peerService is available
+    const currentPeerId = peerService.getPeerId();
+    if (currentPeerId && state.id && state.players[currentPeerId] && state.players[currentPeerId].isAdmin) {
+      dispatch({
+        type: 'SET_PLAYER_CONNECTED',
+        payload: {
+          playerId: currentPeerId
+        }
+      });
+    }
 
     // Handle incoming messages from peers
     const handleMessage = ({ peerId, message }: { peerId: string, message: PeerServiceMessage }) => {
@@ -140,20 +152,27 @@ export const GameProvider = ({
 
     // Handle peer connections
     const handlePeerConnect = (remotePeerId: string) => {
-      console.log('Peer connected:', remotePeerId);
-      
       try {
         const isAdmin = !!state.players[peerService.getPeerId() || '']?.isAdmin;
         if (isAdmin) {
-          dispatch({
-            type: 'ADD_PLAYER',
-            payload: {
-              playerId: remotePeerId
-            }
-          });
-          
-          // The state will be broadcast automatically after update
-          // due to the useEffect that watches state changes
+          // Check if player already exists in state
+          if (state.players[remotePeerId]) {
+            // Update existing player's connection status
+            dispatch({
+              type: 'SET_PLAYER_CONNECTED',
+              payload: {
+                playerId: remotePeerId
+              }
+            });
+          } else if (state.status === 'configuring') {
+            // Add new player if in config mode
+            dispatch({
+              type: 'ADD_PLAYER',
+              payload: {
+                playerId: remotePeerId
+              }
+            });
+          }
         }
       } catch (error) {
         console.error('Error handling peer connection:', error);
@@ -166,13 +185,24 @@ export const GameProvider = ({
       
       try {
         const isAdmin = !!state.players[peerService.getPeerId() || '']?.isAdmin;
-        // Only admin should remove players from the state
-        if (isAdmin && state.status === 'configuring') {
-          // Check if the disconnected peer is in the player list and is not admin
-          const disconnectedPlayer = state.players[remotePeerId];
-          if (disconnectedPlayer && !disconnectedPlayer.isAdmin) {
+        
+        if (isAdmin) {
+          // If in configuration mode, we can remove non-admin players
+          if (state.status === 'configuring') {
+            // Check if the disconnected peer is in the player list and is not admin
+            const disconnectedPlayer = state.players[remotePeerId];
+            if (disconnectedPlayer && !disconnectedPlayer.isAdmin) {
+              dispatch({
+                type: 'REMOVE_PLAYER',
+                payload: {
+                  playerId: remotePeerId
+                }
+              });
+            }
+          } else {
+            // If game has started, just mark player as disconnected
             dispatch({
-              type: 'REMOVE_PLAYER',
+              type: 'SET_PLAYER_DISCONNECTED',
               payload: {
                 playerId: remotePeerId
               }
@@ -195,10 +225,13 @@ export const GameProvider = ({
       peerService.removeListener('peer:connect', handlePeerConnect);
       peerService.removeListener('peer:disconnect', handlePeerDisconnect);
     };
+    // TODO: it is a bit weird that we are subscribing to state here.
   }, [peerService, state]);
 
   // Broadcast state changes if we're the admin
   useEffect(() => {
+    console.log('Broadcasting game state on game state or peer service change');
+
     if (!peerService) return;
 
     if (!state.id) {

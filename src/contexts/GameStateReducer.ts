@@ -23,7 +23,9 @@ export type GameAction =
   | { type: 'UPDATE_PLAYER_NAME'; payload: { playerId: string, playerName: string } }
   | { type: 'UPDATE_PLAYER_BALANCE'; payload: { playerId: string, balance: number } }
   | { type: 'ADD_STASH'; payload: { name: string, balance?: number, isInfinite?: boolean } }
-  | { type: 'UPDATE_STASH'; payload: { stashId: string, updates: Partial<Stash> } };
+  | { type: 'UPDATE_STASH'; payload: { stashId: string, updates: Partial<Stash> } }
+  | { type: 'SET_PLAYER_CONNECTED'; payload: { playerId: string } }
+  | { type: 'SET_PLAYER_DISCONNECTED'; payload: { playerId: string } };
 
 export class GameStateReducer {
   /**
@@ -39,6 +41,7 @@ export class GameStateReducer {
       name: playerName,
       balance: 0,
       isAdmin: true,
+      isConnected: true,
     };
 
     // Create initial game state
@@ -78,6 +81,7 @@ export class GameStateReducer {
       name: playerName || `Player ${Object.keys(state.players).length + 1}`,
       balance: 0,
       isAdmin: false,
+      isConnected: true,
     };
     
     // Return updated state
@@ -413,6 +417,68 @@ export class GameStateReducer {
       version: state.version + 1
     };
   }
+
+  /**
+   * Set a player's connection status to connected
+   * @param state Current game state
+   * @param playerId Peer ID of the player to update
+   * @returns Updated game state with the player marked as connected
+   */
+  public static setPlayerConnected(state: GameState, playerId: string): GameState {
+    // Check if the player exists
+    if (!state.players[playerId]) {
+      return state;
+    }
+    
+    // Don't update if player is already connected
+    if (state.players[playerId].isConnected) {
+      return state;
+    }
+    
+    // Update connection status
+    return {
+      ...state,
+      players: {
+        ...state.players,
+        [playerId]: {
+          ...state.players[playerId],
+          isConnected: true
+        }
+      },
+      version: state.version + 1
+    };
+  }
+  
+  /**
+   * Set a player's connection status to disconnected
+   * @param state Current game state
+   * @param playerId Peer ID of the player to update
+   * @returns Updated game state with the player marked as disconnected
+   */
+  public static setPlayerDisconnected(state: GameState, playerId: string): GameState {
+    // Check if the player exists
+    if (!state.players[playerId]) {
+      return state;
+    }
+    
+    // Don't update if player is already disconnected
+    if (!state.players[playerId].isConnected) {
+      return state;
+    }
+    
+    // Update connection status
+    return {
+      ...state,
+      players: {
+        ...state.players,
+        [playerId]: {
+          ...state.players[playerId],
+          isConnected: false
+        }
+      },
+      version: state.version + 1
+    };
+  }
 }
 
 /**
@@ -488,6 +554,18 @@ export const gameReducer = (state: GameState, action: GameAction): GameState => 
         return GameStateReducer.processTransaction(
           state,
           action.payload
+        );
+      
+      case 'SET_PLAYER_CONNECTED':
+        return GameStateReducer.setPlayerConnected(
+          state,
+          action.payload.playerId
+        );
+      
+      case 'SET_PLAYER_DISCONNECTED':
+        return GameStateReducer.setPlayerDisconnected(
+          state,
+          action.payload.playerId
         );
       
       default:

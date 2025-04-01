@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameContext } from '../contexts/GameContext';
 import ConnectionStatus from '../components/common/ConnectionStatus';
@@ -32,6 +32,7 @@ const HomePage: React.FC = () => {
         throw new Error('Failed to get peer ID');
       }
       
+      console.log('Creating game with peer ID:', peerId);
       // Dispatch to sync the state
       dispatch({ type: 'INIT_GAME', payload: { peerId, playerName: createGameName } });
       
