@@ -24,9 +24,12 @@ const LobbyPage: React.FC = () => {
   const currentPeerId = peerService?.getPeerId() || '';
   const players = state.players || {};
   const isAdmin = players[currentPeerId]?.isAdmin || false;
+  const adminPeerId = Object.keys(state.players).filter(id => 
+    state.players[id]?.isAdmin
+  );
 
   // Get the game URL
-  const gameUrl = `${window.location.origin}/joining?adminPeerId=${btoa(currentPeerId)}`;
+  const gameUrl = `${window.location.origin}/joining?adminPeerId=${btoa(adminPeerId[0])}`;
 
   // Handle copying the URL
   const handleCopyUrl = async () => {
