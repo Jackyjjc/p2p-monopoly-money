@@ -1,5 +1,5 @@
 import React from 'react';
-import styles from '../styles/LobbyPage.module.css';
+import styles from '../styles/PlayersList.module.css';
 import { Player } from '../types/game';
 
 interface PlayersListProps {
@@ -11,7 +11,8 @@ const PlayersList: React.FC<PlayersListProps> = ({ players, currentPeerId }) => 
   return (
     <ul className={styles['player-list']}>
       {Object.values(players).map(player => (
-        <li key={player.peerId} className={player.isAdmin ? styles.admin : ''}>
+        <li key={player.peerId} className={`${player.isAdmin ? styles.admin : ''} ${!player.isConnected ? styles.disconnected : ''}`}>
+          <span className={`${styles['status-dot']} ${player.isConnected ? styles['status-connected'] : styles['status-disconnected']}`} />
           <span className={styles['player-name']}>{player.name}</span>
           <span className={styles['player-balance']}>Balance: {player.balance}</span>
           {player.isAdmin && <span className={styles['admin-badge']}>Admin</span>}

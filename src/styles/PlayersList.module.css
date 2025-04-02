@@ -1,0 +1,68 @@
+.player-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.player-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.player-list li.admin {
+  background-color: #f0f7ff;
+  border-left: 3px solid #1976d2;
+}
+
+.player-list li.disconnected {
+  opacity: 0.7;
+}
+
+.player-name {
+  font-weight: 500;
+}
+
+.player-balance {
+  color: #555;
+}
+
+.admin-badge {
+  background: #1976d2;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.you-badge {
+  background: #2e7d32;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-left: 0.5rem;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.status-connected {
+  background-color: #4caf50; /* Green */
+}
+
+.status-disconnected {
+  background-color: #f44336; /* Red */
+} 

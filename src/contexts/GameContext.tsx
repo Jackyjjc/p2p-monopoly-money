@@ -199,27 +199,13 @@ export const GameProvider = ({
         const isAdmin = !!state.players[peerService.getPeerId() || '']?.isAdmin;
         
         if (isAdmin) {
-          // If in configuration mode, we can remove non-admin players
-          if (state.status === 'configuring') {
-            // Check if the disconnected peer is in the player list and is not admin
-            const disconnectedPlayer = state.players[remotePeerId];
-            if (disconnectedPlayer && !disconnectedPlayer.isAdmin) {
-              dispatch({
-                type: 'REMOVE_PLAYER',
-                payload: {
-                  playerId: remotePeerId
-                }
-              });
+          // If game has started, just mark player as disconnected
+          dispatch({
+            type: 'SET_PLAYER_DISCONNECTED',
+            payload: {
+              playerId: remotePeerId
             }
-          } else {
-            // If game has started, just mark player as disconnected
-            dispatch({
-              type: 'SET_PLAYER_DISCONNECTED',
-              payload: {
-                playerId: remotePeerId
-              }
-            });
-          }
+          });
         }
       } catch (error) {
         console.error('Error handling peer disconnection:', error);
