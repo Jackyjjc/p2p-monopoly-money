@@ -7,6 +7,8 @@ import PlayersList from '../components/PlayersList';
 import StashList from '../components/StashList';
 import StashForm from '../components/StashForm';
 import PlayerBalanceForm from '../components/PlayerBalanceForm';
+import StateLoading from '../components/common/StateLoading';
+import { usePeerConnection } from '../hooks/usePeerConnection';
 import styles from '../styles/LobbyPage.module.css';
 
 const LobbyPage: React.FC = () => {
@@ -15,9 +17,13 @@ const LobbyPage: React.FC = () => {
   const [copySuccess, setCopySuccess] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
 
+  // Use the usePeerConnection hook to ensure PeerService is initialized
+  const { connectionStatus, error: peerError } = usePeerConnection(peerService);
+
   // Check if the current user is admin
   const currentPeerId = peerService?.getPeerId() || '';
-  const isAdmin = state.players[currentPeerId]?.isAdmin || false;
+  const players = state.players || {};
+  const isAdmin = players[currentPeerId]?.isAdmin || false;
 
   // Get the game URL
   const gameUrl = `${window.location.origin}/joining?adminPeerId=${btoa(currentPeerId)}`;
@@ -70,6 +76,16 @@ const LobbyPage: React.FC = () => {
       payload: { startedAt: Date.now() }
     });
   };
+
+  // Show loading state while connection is not ready or state is not initialized
+  if (connectionStatus !== 'connected' || !state.id) {
+    return (
+      <StateLoading
+        connectionStatus={connectionStatus}
+        error={peerError}
+      />
+    );
+  }
 
   return (
     <div className={styles['lobby-page']}>

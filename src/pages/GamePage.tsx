@@ -4,8 +4,10 @@ import ConnectionStatus from '../components/common/ConnectionStatus';
 import BalanceDisplay from '../components/common/BalanceDisplay';
 import TransactionsList from '../components/TransactionsList';
 import TransactionModal from '../components/TransactionModal';
+import StateLoading from '../components/common/StateLoading';
 import { PeerMessageType } from '../types/peerMessages';
 import { validateTransaction } from '../utils/transactionValidator';
+import { usePeerConnection } from '../hooks/usePeerConnection';
 import styles from '../styles/GamePage.module.css';
 
 const GamePage: React.FC = () => {
@@ -13,9 +15,13 @@ const GamePage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [transactionError, setTransactionError] = useState<string | null>(null);
 
+  // Use the usePeerConnection hook to ensure PeerService is initialized
+  const { connectionStatus, error: peerError } = usePeerConnection(peerService);
+
   // Check if the current user is admin
   const currentPeerId = peerService?.getPeerId() || '';
-  const isAdmin = state.players[currentPeerId]?.isAdmin || false;
+  const players = state.players || {};
+  const isAdmin = players[currentPeerId]?.isAdmin || false;
 
   // Listen for error messages from peers (especially transaction validation errors)
   useEffect(() => {
@@ -67,7 +73,7 @@ const GamePage: React.FC = () => {
     // If not admin, send transaction request to admin
     else if (peerService) {
       // Find admin peer ID
-      const adminPeerId = Object.keys(state.players).find(id => state.players[id].isAdmin);
+      const adminPeerId = Object.keys(players).find(id => players[id].isAdmin);
       
       if (adminPeerId) {
         peerService.sendToPeer(adminPeerId, {
@@ -97,6 +103,15 @@ const GamePage: React.FC = () => {
       });
     }
   };
+
+  if (connectionStatus !== 'connected' || !state.id) {
+    return (
+      <StateLoading
+        connectionStatus={connectionStatus}
+        error={peerError}
+      />
+    );
+  }
 
   // Format player data for BalanceDisplay
   const playerItems = Object.values(state.players).map(player => ({

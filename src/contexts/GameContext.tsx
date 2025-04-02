@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect, useRef, useState } from 'react';
 import { GameState } from '../types';
-import { GameAction, gameReducer, GameStateReducer } from './GameStateReducer';
+import { GameAction, gameReducer } from './GameStateReducer';
 import { PeerService } from '../services/PeerService';
-import { PeerMessageType, PeerServiceMessage, ErrorMessage } from '../types/peerMessages';
+import { PeerMessageType, PeerServiceMessage } from '../types/peerMessages';
 import { validateTransaction } from '../utils/transactionValidator';
 import { createErrorMessage } from '../utils/messageUtils';
+import { useSessionStorage, STORAGE_KEYS } from '../hooks/useSessionStorage';
 
 // Create the context with initial undefined values
 const GameContext = createContext<{
@@ -24,8 +25,19 @@ export const GameProvider = ({
   children, 
   peerService
 }: GameProviderProps) => {
-  const [state, dispatch] = useReducer(gameReducer, {} as GameState);
-  const prevPlayerNameRef = useRef<string | null>(null);
+  // Initialize state from session storage or empty state
+  const [storedState, setStoredState] = useSessionStorage<GameState>(
+    STORAGE_KEYS.GAME_STATE,
+    {} as GameState
+  );
+
+  // Use reducer with stored state as initial value
+  const [state, dispatch] = useReducer(gameReducer, storedState);
+
+  // Update session storage when state changes
+  useEffect(() => {
+    setStoredState(state);
+  }, [state, setStoredState]);
 
   // Subscribe to PeerService events
   useEffect(() => {
@@ -214,10 +226,56 @@ export const GameProvider = ({
       }
     };
 
+    const reconnectToPeers = async () => {
+      if (!peerService || !state.id) return;
+
+      if (!peerService.isConnectedToSignalServer()) return;
+
+      const currentPeerId = peerService.getPeerId();
+      if (!currentPeerId || !state.players) return;
+
+      try {
+        const isAdmin = state.players[currentPeerId]?.isAdmin;
+        console.log('Reconnection check - Current player is admin:', isAdmin);
+
+        if (isAdmin) {
+          // Admin reconnects to all players in the state
+          const playerIds = Object.keys(state.players).filter(id => 
+            id !== currentPeerId && state.players[id]?.isConnected
+          );
+          
+          console.log('Admin attempting to reconnect to players:', playerIds);
+          
+          for (const playerId of playerIds) {
+            try {
+              await peerService.connectToPeer(playerId);
+            } catch (error) {
+              console.error(`Failed to reconnect to player ${playerId}:`, error);
+            }
+          }
+        } else {
+          // Non-admin reconnects to the admin
+          const adminId = Object.keys(state.players).find(id => 
+            state.players[id]?.isAdmin && state.players[id]?.isConnected
+          );
+          
+          if (adminId) {
+            console.log('Non-admin attempting to reconnect to admin:', adminId);
+            await peerService.connectToPeer(adminId);
+          } else {
+            console.warn('No admin found to reconnect to');
+          }
+        }
+      } catch (error) {
+        console.error('Error during reconnection:', error);
+      }
+    };
+
     // Listen for events
     peerService.on('message', handleMessage);
     peerService.on('peer:connect', handlePeerConnect);
     peerService.on('peer:disconnect', handlePeerDisconnect);
+    peerService.on('signal:connected', reconnectToPeers);
 
     // Cleanup event listeners
     return () => {
@@ -230,7 +288,7 @@ export const GameProvider = ({
 
   // Broadcast state changes if we're the admin
   useEffect(() => {
-    console.log('Broadcasting game state on game state or peer service change');
+    console.log('Entering broadcast hook');
 
     if (!peerService) return;
 
@@ -247,6 +305,8 @@ export const GameProvider = ({
     
     // Broadcast state to all connected peers
     try {
+      console.log('Broadcasting game state on game state or peer service change');
+
       // Fix the type by using a properly typed message
       peerService.broadcast({
         type: PeerMessageType.STATE_SYNC,
@@ -258,52 +318,6 @@ export const GameProvider = ({
       console.error('Error broadcasting game state:', error);
     }
   }, [peerService, state]);
-
-  // Send player name update to admin when non-admin player changes their name
-  useEffect(() => {
-    if (!peerService || !state.id) return;
-
-    const currentPeerId = peerService.getPeerId();
-    if (!currentPeerId || !state.players[currentPeerId]) return;
-
-    const currentPlayer = state.players[currentPeerId];
-    const currentPlayerName = currentPlayer.name;
-    
-    // Skip if the current player is the admin
-    if (currentPlayer.isAdmin) {
-      prevPlayerNameRef.current = currentPlayerName;
-      return;
-    }
-
-    // Check if name has changed
-    if (prevPlayerNameRef.current === currentPlayerName) {
-      return;
-    }
-
-    // Find admin peer ID
-    const adminPeerId = Object.keys(state.players).find(id => state.players[id].isAdmin);
-    if (!adminPeerId) {
-      prevPlayerNameRef.current = currentPlayerName;
-      return;
-    }
-
-    // Send player name update to admin
-    try {
-      console.log('Sending player name update to admin:', currentPlayerName);
-      peerService.sendToPeer(adminPeerId, {
-        type: PeerMessageType.PLAYER_NAME,
-        payload: {
-          playerId: currentPeerId,
-          playerName: currentPlayerName
-        }
-      } as PeerServiceMessage);
-      
-      // Update ref after successful send
-      prevPlayerNameRef.current = currentPlayerName;
-    } catch (error) {
-      console.error('Error sending player name update:', error);
-    }
-  }, [peerService, state.id, state.players]);
 
   return (
     <GameContext.Provider value={{ state, dispatch, peerService }}>

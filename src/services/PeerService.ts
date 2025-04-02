@@ -17,6 +17,7 @@ import { validateMessage } from '../utils';
 export class PeerService extends EventEmitter {
   private initialized: boolean = false;
   private peer: Peer | null = null;
+  private _isConnectedToSignalServer: boolean = false;
 
   private connectedPeers: Map<string, DataConnection> = new Map();
   private pendingConnections: Map<string, Promise<void>> = new Map();
@@ -47,6 +48,7 @@ export class PeerService extends EventEmitter {
     console.log('Creating new Peer instance');
 
     this.initialized = true;
+    this.setIsConnectedToSignalServer(false);
     
     // Common configuration for all peer connections
     const peerConfig = {
@@ -72,6 +74,7 @@ export class PeerService extends EventEmitter {
     // Promise to wait for the peer to be fully connected to the signal server. We only get a peer ID after the connection is open.
     return new Promise<string>((resolve, reject) => {
       const timeout = setTimeout(() => {
+        this.setIsConnectedToSignalServer(false);
         reject(new Error('Connection to signal server timed out'));
       }, 10000);
       
@@ -79,6 +82,7 @@ export class PeerService extends EventEmitter {
       this.peer?.on('open', (id) => {
         clearTimeout(timeout);
         console.log('Connected to signal server with peer ID:', id);
+        this.setIsConnectedToSignalServer(true);
         resolve(id);
       });
 
@@ -86,9 +90,32 @@ export class PeerService extends EventEmitter {
       this.peer?.on('error', (error) => {
         clearTimeout(timeout);
         console.error('Failed to connect to signal server:', error);
+        this.setIsConnectedToSignalServer(false);
         reject(error);
       });
     });
+  }
+
+  private setIsConnectedToSignalServer(value: boolean) {
+    const isChanged = this._isConnectedToSignalServer != value;
+    if (!isChanged) {
+      return;
+    }
+
+    this._isConnectedToSignalServer = value;
+    if (value) {
+      this.emit('signal:connected');
+    } else {
+      this.emit('signal:disconnected');
+    }
+  }
+
+  /**
+   * Get the current connection status to the signal server
+   * @returns The current connection status
+   */
+  public isConnectedToSignalServer(): boolean {
+    return this._isConnectedToSignalServer;
   }
 
   /**
@@ -332,6 +359,7 @@ export class PeerService extends EventEmitter {
     if (this.peer) {
       this.peer.destroy();
       this.peer = null;
+      this.setIsConnectedToSignalServer(false);
       console.log('PeerJS instance stopped');
     }
 

@@ -9,10 +9,12 @@ interface ConnectionStatusProps {
 }
 
 const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ showPeerId = true }) => {
+  console.log('rerendering connections status')
+  
   const { peerService } = useGameContext();
   
   const peerId = peerService?.getPeerId() || null;
-  const isConnected = !!peerId;
+  const isConnected = peerService?.isConnectedToSignalServer();
   const connectedPeers = peerService?.getPeers() || [];
   
   const copyPeerId = () => {

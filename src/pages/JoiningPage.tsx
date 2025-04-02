@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGameContext } from '../contexts/GameContext';
 import ConnectionStatus from '../components/common/ConnectionStatus';
 import { usePeerConnection } from '../hooks/usePeerConnection';
+import { PeerServiceMessage } from '../types/peerMessages';
+import { PeerMessageType } from '../types/peerMessages';
 
 const JoiningPage: React.FC = () => {
   const { state, dispatch, peerService } = useGameContext();
@@ -19,17 +21,6 @@ const JoiningPage: React.FC = () => {
   // Handle game state updates and navigation
   useEffect(() => {
     if (state.id && peerService && playerName.trim() && hasAttemptedJoin) {
-      const peerId = peerService.getPeerId();
-      if (peerId && state.players[peerId]?.name !== playerName) {
-        dispatch({ 
-          type: 'UPDATE_PLAYER_NAME', 
-          payload: { 
-            playerId: peerId, 
-            playerName: playerName 
-          } 
-        });
-      }
-
       // Navigate based on game status
       if (state.status === 'configuring') {
         navigate('/lobby');
@@ -43,7 +34,9 @@ const JoiningPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!playerName.trim()) {
+
+    var cleanedPlayerName = playerName.trim();
+    if (!cleanedPlayerName) {
       setError('Please enter your name');
       return;
     }
@@ -56,6 +49,13 @@ const JoiningPage: React.FC = () => {
     try {
       setIsLoading(true);
       await peerService?.connectToPeer(adminPeerId!);
+      await peerService?.sendToPeer(adminPeerId!, {
+        type: PeerMessageType.PLAYER_NAME,
+        payload: {
+          playerId: peerService?.getPeerId(),
+          playerName: cleanedPlayerName
+        }
+      } as PeerServiceMessage);
       setHasAttemptedJoin(true);
     } catch (error) {
       console.error('Failed to connect to game:', error);

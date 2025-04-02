@@ -16,6 +16,12 @@ export const usePeerConnection = (peerService: PeerService | undefined) => {
     console.log('usePeerConnection hook is called when peerService changes.');
     const initializePeer = async () => {
       if (!peerService) return;
+
+      if (peerService.isConnectedToSignalServer()) {
+        setConnectionStatus('connected');
+        setPeerId(peerService.getPeerId());
+        return;
+      }
       
       try {
         setConnectionStatus('connecting');

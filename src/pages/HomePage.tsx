@@ -20,7 +20,7 @@ const HomePage: React.FC = () => {
       return;
     }
 
-    if (!peerService || !peerService.getPeerId()) {
+    if (!peerService) {
       setError('Peer connection not established. Please try again.');
       return;
     }
