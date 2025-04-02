@@ -1,8 +1,8 @@
 import React from 'react';
-import { useGameContext } from '../../contexts/GameContext';
+import { useGameContext } from '../contexts/GameContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faClipboard as faClipboardRegular } from '@fortawesome/free-regular-svg-icons';
-import styles from './ConnectionStatus.module.css';
+import styles from '../styles/ConnectionStatus.module.css';
 
 interface ConnectionStatusProps {
   showPeerId?: boolean;

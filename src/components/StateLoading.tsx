@@ -1,6 +1,6 @@
 import React from 'react';
 import ConnectionStatus from './ConnectionStatus';
-import styles from '../../styles/StateLoading.module.css';
+import styles from '../styles/StateLoading.module.css';
 
 interface StateLoadingProps {
   connectionStatus: string;

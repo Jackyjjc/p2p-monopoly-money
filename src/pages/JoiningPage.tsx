@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGameContext } from '../contexts/GameContext';
-import ConnectionStatus from '../components/common/ConnectionStatus';
+import ConnectionStatus from '../components/ConnectionStatus';
 import { usePeerConnection } from '../hooks/usePeerConnection';
 import { PeerServiceMessage } from '../types/peerMessages';
 import { PeerMessageType } from '../types/peerMessages';

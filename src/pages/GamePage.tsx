@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useGameContext } from '../contexts/GameContext';
-import ConnectionStatus from '../components/common/ConnectionStatus';
-import BalanceDisplay from '../components/common/BalanceDisplay';
+import ConnectionStatus from '../components/ConnectionStatus';
+import PlayersList from '../components/PlayersList';
+import StashList from '../components/StashList';
 import TransactionsList from '../components/TransactionsList';
 import TransactionModal from '../components/TransactionModal';
-import StateLoading from '../components/common/StateLoading';
+import StateLoading from '../components/StateLoading';
 import { PeerMessageType } from '../types/peerMessages';
 import { validateTransaction } from '../utils/transactionValidator';
 import { usePeerConnection } from '../hooks/usePeerConnection';
@@ -113,22 +114,6 @@ const GamePage: React.FC = () => {
     );
   }
 
-  // Format player data for BalanceDisplay
-  const playerItems = Object.values(state.players).map(player => ({
-    id: player.peerId,
-    name: player.name,
-    balance: player.balance,
-    isCurrentPlayer: player.peerId === currentPeerId
-  }));
-
-  // Format stash data for BalanceDisplay
-  const stashItems = Object.values(state.stashes).map(stash => ({
-    id: stash.id,
-    name: stash.name,
-    balance: stash.balance,
-    isInfinite: stash.isInfinite
-  }));
-
   return (
     <div className={styles['game-page']}>
       <div className={styles['header-container']}>
@@ -164,21 +149,19 @@ const GamePage: React.FC = () => {
       
       {/* Transaction Dashboard */}
       <div className={styles['dashboard']}>
-        <BalanceDisplay 
-          title="Players" 
-          items={playerItems} 
-          itemRenderer={(item) => (
-            <div className={styles['balance-item']}>
-              <div className={styles['balance-name']}>
-                {item.name}
-                {item.isCurrentPlayer && <span className={styles['you-badge']}> (You)</span>}
-                {state.players[item.id]?.isAdmin && <span className={styles['admin-badge']}> (Admin)</span>}
-              </div>
-              <div className={styles['balance-amount']}>{item.balance}</div>
-            </div>
-          )}
-        />
-        <BalanceDisplay title="Stashes" items={stashItems} />
+        <section className={styles['section']}>
+          <h2>Players</h2>
+          <PlayersList 
+            players={state.players} 
+            currentPeerId={currentPeerId} 
+          />
+        </section>
+        
+        <section className={styles['section']}>
+          <h2>Stashes</h2>
+          <StashList stashes={state.stashes} />
+        </section>
+        
         <TransactionsList
           transactions={state.transactions}
           players={state.players}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameContext } from '../contexts/GameContext';
-import ConnectionStatus from '../components/common/ConnectionStatus';
+import ConnectionStatus from '../components/ConnectionStatus';
 import { usePeerConnection } from '../hooks/usePeerConnection';
 
 // Main component for the HomePage

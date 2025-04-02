@@ -2,12 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useGameContext } from '../contexts/GameContext';
-import ConnectionStatus from '../components/common/ConnectionStatus';
+import ConnectionStatus from '../components/ConnectionStatus';
 import PlayersList from '../components/PlayersList';
 import StashList from '../components/StashList';
 import StashForm from '../components/StashForm';
 import PlayerBalanceForm from '../components/PlayerBalanceForm';
-import StateLoading from '../components/common/StateLoading';
+import StateLoading from '../components/StateLoading';
 import { usePeerConnection } from '../hooks/usePeerConnection';
 import styles from '../styles/LobbyPage.module.css';
 
