@@ -104,9 +104,9 @@ export class PeerService extends EventEmitter {
 
     this._isConnectedToSignalServer = value;
     if (value) {
-      this.emit('signal:connected');
+      this.emit('signal:connect');
     } else {
-      this.emit('signal:disconnected');
+      this.emit('signal:disconnect');
     }
   }
 

@@ -8,23 +8,23 @@ import { useSessionStorage, STORAGE_KEYS } from './useSessionStorage';
  * @returns Object containing connection status, error information, and peer ID
  */
 export const usePeerConnection = (peerService: PeerService | undefined) => {
-  const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
+  const [signalServerConnectionStatus, setSignalServerConnectionStatus] = useState<string>('disconnected');
   const [error, setError] = useState<string | null>(null);
   const [peerId, setPeerId] = useSessionStorage<string | null>(STORAGE_KEYS.PEER_ID, null);
   
   useEffect(() => {
-    console.log('usePeerConnection hook is called when peerService changes.');
+    console.log('PeerService is changed, try initializing it.');
     const initializePeer = async () => {
       if (!peerService) return;
 
       if (peerService.isConnectedToSignalServer()) {
-        setConnectionStatus('connected');
+        setSignalServerConnectionStatus('connected');
         setPeerId(peerService.getPeerId());
         return;
       }
       
       try {
-        setConnectionStatus('connecting');
+        setSignalServerConnectionStatus('connecting');
         
         // Initialize with existing peer ID if available
         const newPeerId = await peerService.initConnection(peerId || undefined);
@@ -32,10 +32,10 @@ export const usePeerConnection = (peerService: PeerService | undefined) => {
         // Update the peer ID in localStorage if it's changed
         setPeerId(newPeerId);
         
-        setConnectionStatus('connected');
+        setSignalServerConnectionStatus('connected');
       } catch (error) {
         console.error('Failed to initialize peer:', error);
-        setConnectionStatus('error');
+        setSignalServerConnectionStatus('error');
         setError('Failed to connect to the signaling server. Please try again.');
       }
     };
@@ -43,5 +43,5 @@ export const usePeerConnection = (peerService: PeerService | undefined) => {
     initializePeer();
   }, [peerService]);
 
-  return { connectionStatus, error, setError, peerId };
+  return { connectionStatus: signalServerConnectionStatus, error, setError, peerId };
 }; 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, ReactNode, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { GameState } from '../types';
 import { GameAction, gameReducer } from './GameStateReducer';
 import { PeerService } from '../services/PeerService';
@@ -7,14 +7,12 @@ import { validateTransaction } from '../utils/transactionValidator';
 import { createErrorMessage } from '../utils/messageUtils';
 import { useSessionStorage, STORAGE_KEYS } from '../hooks/useSessionStorage';
 
-// Create the context with initial undefined values
 const GameContext = createContext<{
   state: GameState;
   dispatch: React.Dispatch<GameAction>;
   peerService: PeerService | undefined;
 } | undefined>(undefined);
 
-// Provider component that wraps the app
 interface GameProviderProps {
   children: ReactNode;
   initialState?: GameState;
@@ -25,6 +23,7 @@ export const GameProvider = ({
   children, 
   peerService
 }: GameProviderProps) => {
+
   // Initialize state from session storage or empty state
   const [storedState, setStoredState] = useSessionStorage<GameState>(
     STORAGE_KEYS.GAME_STATE,
@@ -261,7 +260,7 @@ export const GameProvider = ({
     peerService.on('message', handleMessage);
     peerService.on('peer:connect', handlePeerConnect);
     peerService.on('peer:disconnect', handlePeerDisconnect);
-    peerService.on('signal:connected', reconnectToPeers);
+    peerService.on('signal:connect', reconnectToPeers);
 
     // Cleanup event listeners
     return () => {
@@ -269,7 +268,6 @@ export const GameProvider = ({
       peerService.removeListener('peer:connect', handlePeerConnect);
       peerService.removeListener('peer:disconnect', handlePeerDisconnect);
     };
-    // TODO: it is a bit weird that we are subscribing to state here.
   }, [peerService, state]);
 
   // Broadcast state changes if we're the admin
@@ -312,7 +310,6 @@ export const GameProvider = ({
   );
 };
 
-// Custom hook for consuming the context
 export const useGameContext = () => {
   const context = useContext(GameContext);
   if (context === undefined) {
